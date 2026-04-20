@@ -1,0 +1,16 @@
+[Unit]
+Description=APEX Terminal Core Daemon
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/npx tsx /opt/apex-core/daemon.ts
+WorkingDirectory=/opt/apex-core
+StandardInput=tty
+StandardOutput=tty
+TTYPath=/dev/tty1
+Restart=always
+User=pi
+Group=pi
+
+[Install]
+WantedBy=multi-user.target
