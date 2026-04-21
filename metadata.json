@@ -1,5 +1,5 @@
 {
-  "name": "APEX Terminal Core",
+  "name": "Donkey Kong SSH Core",
   "description": "A persistent, real-time Linux daemon (ASCII framebuffer) with deterministic state engine and SSH interface.",
   "requestFramePermissions": [],
   "majorCapabilities": ["EMBEDDED_SYSTEMS", "ASCII_RENDERING", "REAL_TIME_LOOPS"]

@@ -8,8 +8,8 @@ import { InputHandler } from './src/core/input_handler';
 import { Scheduler } from './src/core/scheduler';
 
 /**
- * APEX CORE - STANDALONE DAEMON
- *
+ * DONKEY KONG SSH CORE - STANDALONE DAEMON
+ * 
  * Run with: npx tsx daemon.ts
  */
 
@@ -18,7 +18,7 @@ const inputHandler = new InputHandler();
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
-  terminal: false,
+  terminal: false
 });
 
 rl.on('line', (line) => {

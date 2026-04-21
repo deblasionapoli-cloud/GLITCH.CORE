@@ -12,7 +12,7 @@ export class Scheduler {
   private state: State = { ...INITIAL_STATE };
   private inputHandler: InputHandler;
   private onFrame: (frame: string) => void;
-  private interval: ReturnType<typeof setInterval> | null = null;
+  private interval: NodeJS.Timeout | null = null;
   private tickRate = 100; // 10 FPS
 
   constructor(inputHandler: InputHandler, onFrame: (frame: string) => void) {

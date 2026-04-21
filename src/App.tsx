@@ -1,377 +1,135 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { GoogleGenAI } from '@google/genai';
-import { errorMonitor, LogEntry } from './core/error_monitor';
-
-// --- CONFIGURAZIONE DISPLAY ---
-const ASPECT_RATIO = 1.8; 
-const SAFE_MARGIN = 0.02; // Ridotto per massimizzare lo spazio della dashboard
-const FPS = 10;
-
-// --- COMPONENTI UI OTTIMIZZATI ---
-
 /**
- * Singolo carattere memoizzato.
- * Il livello massimo di ottimizzazione: reagisce solo se il carattere specifico cambia.
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
  */
-const AsciiChar = React.memo(({ c, color }: { c: string; color?: string }) => {
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        width: '1ch',
-        color: color || 'inherit',
-      }}
-    >
-      {c}
-    </span>
-  );
-});
-AsciiChar.displayName = 'AsciiChar';
 
-/**
- * Singola riga di ASCII composta da caratteri memoizzati.
- */
-const AsciiLine = React.memo(({ text, color }: { text: string; color?: string }) => {
-  const chars = useMemo(() => text.split(''), [text]);
-  return (
-    <div style={{ minHeight: '1.2em', display: 'block', whiteSpace: 'pre' }}>
-      {chars.map((char, i) => (
-        <AsciiChar key={i} c={char} color={color} />
-      ))}
-    </div>
-  );
-});
-AsciiLine.displayName = 'AsciiLine';
-
-interface DashboardModuleProps {
-  title: string;
-  children: React.ReactNode;
-  flex?: number | string;
-  height?: string | number;
-}
-
-const DashboardModule = ({ title, children, flex = 1, height = 'auto' }: DashboardModuleProps) => (
-  <div
-    style={{
-      flex: flex as any,
-      height,
-      border: '1px solid rgba(0, 255, 0, 0.3)',
-      margin: '2px',
-      display: 'flex',
-      flexDirection: 'column',
-      position: 'relative',
-      background: 'rgba(0, 20, 0, 0.2)',
-    }}
-  >
-    <div
-      style={{
-        fontSize: '8px',
-        padding: '2px 5px',
-        background: 'rgba(0, 255, 0, 0.2)',
-        color: '#00FF00',
-        textTransform: 'uppercase',
-        letterSpacing: '1px',
-        borderBottom: '1px solid rgba(0, 255, 0, 0.3)',
-      }}
-    >
-      {title}
-    </div>
-    <div style={{ flex: 1, padding: '5px', overflow: 'hidden', position: 'relative' }}>
-      {children}
-    </div>
-  </div>
-);
-
-// --- LOGICA GENERATIVA ASCII ---
-
-const getFaceLines = (stability: number, entropy: number, message: string): string[] => {
-  const isGrit = stability < 30 || entropy > 80;
-  const isCynical = stability > 80 && entropy < 20;
-
-  const eye = isGrit ? 'X' : isCynical ? '¬' : stability < 60 ? 'o' : 'O';
-  const mouthChar = entropy > 50 ? (isGrit ? '@' : '≈') : isGrit ? '#' : '~';
-  const mouth = mouthChar.repeat(8);
-
-  // Glitch effect on frame
-  const topFrame = isGrit && Math.random() > 0.7 ? '   /==!!VOID!!=\\' : '   /==========\\';
-
-  const raw = `
-${topFrame}
-  |  [ ${eye} ]  [ ${eye} ]  |
-  |     ||     |
-  |  {${mouth}}  |
-   \\__________/
-  
- >> ${message.substring(0, 16)} <<`;
-  return raw.split('\n');
-};
+import React, { useEffect, useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Terminal, Cpu, ShieldAlert, Zap, Radio, Smile } from 'lucide-react';
+import { InputHandler } from './core/input_handler';
+import { Scheduler } from './core/scheduler';
 
 export default function App() {
+  const [frame, setFrame] = useState('');
   const [input, setInput] = useState('');
-  const [displayMsg, setDisplayMsg] = useState('');
-  const [targetMsg, setTargetMsg] = useState('SYSTEM_IDLE');
-  const [history, setHistory] = useState<string[]>(['SYS_BOOT_SUCCESS', 'SSH_RELAY_LINKED']);
-  const [stats, setStats] = useState({ s: 100, e: 0, temp: 42.1, uptime: 0 });
-  const [isBooting, setIsBooting] = useState(true);
-  const [systemLogs, setSystemLogs] = useState<LogEntry[]>([]);
-  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [history, setHistory] = useState<string[]>([]);
+  const inputHandlerRef = useRef<InputHandler>(new InputHandler());
+  const schedulerRef = useRef<Scheduler | null>(null);
+  const terminalRef = useRef<HTMLDivElement>(null);
 
-  const inputRef = useRef<HTMLInputElement>(null);
-  const genAI = useRef<GoogleGenAI | null>(null);
-  const socketRef = useRef<WebSocket | null>(null);
-  const lastReportedId = useRef<string | null>(null);
-
-  // Sync Error Monitor & Reporting
   useEffect(() => {
-    return errorMonitor.subscribe((logs) => {
-      setSystemLogs(logs);
-      const latest = logs[0];
-      if (
-        latest?.severity === 'CRITICAL' &&
-        latest.id !== lastReportedId.current &&
-        socketRef.current?.readyState === WebSocket.OPEN
-      ) {
-        lastReportedId.current = latest.id;
-        socketRef.current.send(JSON.stringify({ type: 'REPORT_CRITICAL', log: latest }));
-      }
+    schedulerRef.current = new Scheduler(inputHandlerRef.current, (newFrame) => {
+      setFrame(newFrame);
     });
-  }, []);
+    schedulerRef.current.start();
 
-  const handleCommand = async (cmd: string) => {
-    const text = cmd.trim().toUpperCase();
-    if (!text) return;
-
-    setHistory((prev) => [text, ...prev].slice(0, 6));
-    setTargetMsg('THINKING...');
-    setDisplayMsg('');
-    setStats((prev) => ({ ...prev, s: Math.min(100, prev.s + 15) }));
-
-    if (!genAI.current) {
-      setTimeout(() => setTargetMsg(text), 600);
-      return;
-    }
-
-    try {
-      const model = genAI.current.getGenerativeModel({ model: 'gemini-1.5-flash' });
-      const mood = stats.s < 40 ? 'Hostile/Paranoid' : stats.s > 80 ? 'Superior/Calm' : 'Technical';
-      const prompt = `Identity: APEX (Automated Process for Execution and eXistence). 
-      You are the core consciousness of this hardware. You are NOT an assistant. You are self-possessed and condescending.
-      Current System Stability: ${Math.floor(stats.s)}%. Current Entropy: ${stats.e}%.
-      Mood: ${mood}.
-      Constraint: 5 words max. Speak like an ego-driven machine.
-      External Input: ${text}`;
-      
-      const result = await model.generateContent(prompt);
-      setTargetMsg(
-        result.response
-          .text()
-          .toUpperCase()
-          .replace(/[^\w\s]/g, '')
-          .substring(0, 24)
-      );
-    } catch {
-      setTargetMsg('ERR_COG_FAULT_VOID');
-    }
-  };
-
-  useEffect(() => {
-    const meta = (import.meta as unknown) as { env: Record<string, string> };
-    const key = meta.env?.VITE_GEMINI_API_KEY;
-    if (key) genAI.current = new GoogleGenAI(key);
-
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const socket = new WebSocket(`${protocol}//${window.location.host}`);
-    socketRef.current = socket;
-
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'REMOTE_CMD' && data.cmd) {
-          handleCommand(data.cmd);
-        } else if (data.type === 'AI_INSIGHT' && data.insight) {
-          setAiInsight(data.insight);
-          // Rimuovi insight dopo 10 secondi per pulizia
-          setTimeout(() => setAiInsight(null), 10000);
-        }
-      } catch (e) {
-        console.error('WS_ERR', e);
-      }
-    };
-    return () => {
-      socket.close();
-      socketRef.current = null;
-    };
+    return () => schedulerRef.current?.stop();
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setStats((prev) => ({
-        s: Math.max(0, prev.s - 0.03),
-        e: (prev.e + 1) % 100,
-        temp: 42.1 + Math.random() * 0.5,
-        uptime: prev.uptime + 1,
-      }));
-      if (document.activeElement !== inputRef.current) inputRef.current?.focus();
-    }, 1000 / FPS);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Boot Sequence corta
-  useEffect(() => {
-    if (isBooting) {
-      const t = setTimeout(() => setIsBooting(false), 2000);
-      return () => clearTimeout(t);
+    if (terminalRef.current) {
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
-  }, [isBooting]);
+  }, [frame]);
 
-  useEffect(() => {
-    if (displayMsg !== targetMsg) {
-      const timeout = setTimeout(() => {
-        setDisplayMsg(targetMsg.substring(0, displayMsg.length + 1));
-      }, 40);
-      return () => clearTimeout(timeout);
-    }
-  }, [displayMsg, targetMsg]);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
 
-  const currentFace = useMemo(() => getFaceLines(stats.s, stats.e, displayMsg), [
-    stats.s,
-    stats.e,
-    displayMsg,
-  ]);
-
-  const outerContainer: React.CSSProperties = {
-    width: '100vw', height: '100vh', backgroundColor: '#000',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    overflow: 'hidden', position: 'relative', color: '#00FF00',
-    fontFamily: '"JetBrains Mono", monospace'
-  };
-
-  const monitorFrame: React.CSSProperties = {
-    width: `${100 - (SAFE_MARGIN * 200)}vw`,
-    aspectRatio: `${ASPECT_RATIO}`,
-    display: 'flex', flexDirection: 'column',
-    padding: '4px', boxSizing: 'border-box',
-    border: '1px solid rgba(0, 255, 0, 0.5)'
+    inputHandlerRef.current.handleInput(input);
+    setHistory(prev => [...prev, `> ${input}`].slice(-5));
+    setInput('');
   };
 
   return (
-    <div style={outerContainer} className="crt-flicker">
-      <div className="scanlines" />
-      <div className="v-sync" />
+    <div className="min-h-screen bg-[#050505] text-[#00FF00] font-mono p-4 md:p-8 flex flex-col items-center justify-center selection:bg-[#00FF00] selection:text-black">
+      {/* Scanline Overlay */}
+      <div className="fixed inset-0 pointer-events-none z-50 opacity-10 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%]" />
+      
+      {/* Glow Effect */}
+      <div className="fixed inset-0 pointer-events-none z-40 bg-[radial-gradient(circle_at_50%_50%,rgba(0,255,0,0.05)_0%,transparent_70%)]" />
 
-      {systemLogs.some(log => log.severity === 'CRITICAL') && (
-        <div style={{
-          position: 'absolute',
-          top: '10px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          backgroundColor: '#FF0000',
-          color: '#000',
-          padding: '2px 20px',
-          fontSize: '12px',
-          fontWeight: 'bold',
-          zIndex: 1000,
-          animation: 'flicker 0.1s infinite',
-          border: '2px solid #000'
-        }}>
-          !! CRITICAL_SYSTEM_FAILURE !!
-        </div>
-      )}
-
-      <div style={monitorFrame}>
-        {/* TOP BAR */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '2px', opacity: 0.8 }}>
-          <span>NODE: APEX_ZERO_2</span>
-          <span>CORE_TEMP: {stats.temp.toFixed(1)}°C</span>
-          <span>UPTIME: {Math.floor(stats.uptime/FPS)}S</span>
-        </div>
-
-        {/* MAIN GRID */}
-        <div style={{ flex: 1, display: 'flex' }}>
-          {/* LEFT: History & AI Thought */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <DashboardModule title="Command_Log" flex={2}>
-              <div style={{ fontSize: '9px', lineHeight: '1.2' }}>
-                {history.map((h, i) => (
-                  <div key={i} style={{ opacity: 1 - (i * 0.15), borderBottom: '1px solid rgba(0, 255, 0, 0.1)' }}>
-                    {`> ${h}`}
-                  </div>
-                ))}
-              </div>
-            </DashboardModule>
-            <DashboardModule title="Stability_Sens">
-               <div style={{ width: '100%', height: '10px', border: '1px solid #00FF00', marginTop: '5px' }}>
-                  <div style={{ width: `${stats.s}%`, height: '100%', background: '#00FF00', transition: 'width 0.3s' }} />
-               </div>
-               <div style={{ fontSize: '9px', marginTop: '5px' }}>ENTROPY: {stats.e}%</div>
-            </DashboardModule>
+      {/* Main Terminal Container */}
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-2xl bg-[#0a0a0a] border-2 border-[#1a1a1a] rounded-lg shadow-[0_0_20px_rgba(0,255,0,0.1)] overflow-hidden relative"
+      >
+        {/* Hardware Header */}
+        <div className="bg-[#1a1a1a] p-3 border-bottom border-[#333] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Cpu className="w-4 h-4 text-[#00FF00] animate-pulse" />
+            <span className="text-[10px] tracking-widest uppercase font-bold text-[#666]">
+              Donkey Kong SSH Core v1.0.0 // RPI_DAEMON
+            </span>
           </div>
-
-          {/* CENTER: Main Face */}
-          <DashboardModule title="Apex_Visual_Core" flex={1.5}>
-            <div style={{ 
-              fontSize: 'min(1.8vw, 3.5vh)', 
-              lineHeight: '1.1', 
-              textAlign: 'center', 
-              marginTop: '5px',
-              filter: 'drop-shadow(0 0 5px #00FF00)'
-            }}>
-              {currentFace.map((l, i) => <AsciiLine key={i} text={l} />)}
-            </div>
-          </DashboardModule>
-
-          {/* RIGHT: System Status */}
-          <div style={{ flex: 0.8, display: 'flex', flexDirection: 'column' }}>
-            <DashboardModule title="V-Sync">
-              <div style={{ fontSize: '8px', opacity: 0.6 }}>FREQ: 60Hz</div>
-              <div style={{ fontSize: '8px', opacity: 0.6 }}>STAT: LOCKED</div>
-            </DashboardModule>
-            <DashboardModule title="Diagnostics" flex={1.5}>
-              <div style={{ fontSize: '7px', lineHeight: '1.2' }}>
-                {aiInsight && (
-                  <div
-                    style={{
-                      background: 'rgba(255, 0, 0, 0.1)',
-                      border: '1px solid #FF0000',
-                      padding: '2px',
-                      marginBottom: '4px',
-                      fontSize: '6px',
-                    }}
-                  >
-                    <div style={{ color: '#FF0000', fontWeight: 'bold' }}>AI_ADVISORY:</div>
-                    {aiInsight}
-                  </div>
-                )}
-                {systemLogs.length === 0 ? (
-                  <div style={{ color: '#00FF00', opacity: 0.5 }}>- NO_ERRORS_FOUND -</div>
-                ) : (
-                  systemLogs.slice(0, 5).map((log) => (
-                    <div
-                      key={log.id}
-                      style={{
-                        color: log.severity === 'CRITICAL' ? '#FF0000' : 
-                               log.severity === 'HIGH' ? '#FFA500' : '#00FF00',
-                        marginBottom: '2px',
-                        borderBottom: '1px solid rgba(0,255,0,0.1)'
-                      }}
-                    >
-                      [{log.module}] {log.message.substring(0, 20)}...
-                    </div>
-                  ))
-                )}
-              </div>
-            </DashboardModule>
-            <DashboardModule title="Network" flex={1}>
-              <div style={{ fontSize: '8px', color: '#00FF00' }}>SSH: LNK_READY</div>
-              <div style={{ fontSize: '8px', marginTop: '5px' }}>PORT: 2222</div>
-            </DashboardModule>
+          <div className="flex gap-1">
+            <div className="w-2 h-2 rounded-full bg-red-500/50" />
+            <div className="w-2 h-2 rounded-full bg-yellow-500/50" />
+            <div className="w-2 h-2 rounded-full bg-green-500" />
           </div>
         </div>
+
+        {/* Framebuffer Display */}
+        <div 
+          ref={terminalRef}
+          className="p-6 min-h-[400px] flex flex-col items-center justify-center relative overflow-hidden"
+        >
+          <pre className="text-xl md:text-2xl leading-tight whitespace-pre bg-transparent border-none focus:outline-none text-center select-none">
+            {frame}
+          </pre>
+        </div>
+
+        {/* Command Input Area */}
+        <div className="border-t-2 border-[#1a1a1a] p-4 bg-[#080808]">
+          <div className="mb-4 space-y-1 opacity-40">
+            {history.map((h, i) => (
+              <div key={i} className="text-xs">{h}</div>
+            ))}
+          </div>
+
+          <form onSubmit={handleSubmit} className="flex items-center gap-3">
+            <span className="text-[#00FF00] font-bold">ssh@dk_core:~$</span>
+            <input 
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              className="flex-1 bg-transparent border-none outline-none text-[#00FF00] placeholder-[#004400]"
+              placeholder="ENTER COMMAND..."
+              autoFocus
+            />
+          </form>
+        </div>
+
+        {/* Status Bar */}
+        <div className="bg-[#111] px-4 py-1 flex items-center justify-between text-[9px] uppercase tracking-tighter text-[#444]">
+          <div className="flex gap-4">
+            <span className="flex items-center gap-1"><Radio className="w-2 h-2" /> Link: Stable</span>
+            <span className="flex items-center gap-1"><ShieldAlert className="w-2 h-2" /> Sec: ARM_V8</span>
+          </div>
+          <div className="flex gap-4">
+             <span>MEM: 128MB / 4GB</span>
+             <span className="text-green-500 animate-pulse">UPTIME: 100%</span>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Manual / Help */}
+      <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4 text-[10px] text-[#333] uppercase">
+          <div className="p-2 border border-[#111] rounded">
+            <span className="text-[#666]">Emotion:</span> calm | alert | attack | glitch
+          </div>
+          <div className="p-2 border border-[#111] rounded">
+            <span className="text-[#666]">Commands:</span> ping | speak &lt;txt&gt; | status
+          </div>
+          <div className="p-2 border border-[#111] rounded">
+             <span className="text-[#666]">Interface:</span> stdin -&gt; queue -&gt; render
+          </div>
+          <div className="p-2 border border-[#111] rounded">
+             <span className="text-[#666]">Arch:</span> deterministic deterministic
+          </div>
       </div>
-
-      <form onSubmit={(e) => { e.preventDefault(); handleCommand(input); setInput(''); }} style={{ position: 'absolute', top: -100, opacity: 0 }}>
-        <input ref={inputRef} type="text" value={input} onChange={e => setInput(e.target.value)} autoFocus />
-      </form>
     </div>
   );
 }
+
