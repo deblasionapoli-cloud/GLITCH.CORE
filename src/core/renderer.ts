@@ -10,8 +10,17 @@ import { State } from './types';
  * Pure transformation layer: State -> ASCII Frame
  */
 export function renderFrame(state: State): string {
-  const { emotion_state, animation_phase, entropy } = state;
+  const { emotion_state, animation_phase, entropy, power_state } = state;
   
+  if (power_state === 'off') {
+     return "\n\n\n      [ SIGNAL_LOST ]\n\n\n";
+  }
+
+  if (power_state === 'rebooting') {
+     const dots = ".".repeat((animation_phase % 4));
+     return `\n\n\n      REBOOTING${dots}\n\n\n      BIOS_V_2.1.0\n      CHECKING_INTEGRITY...`;
+  }
+
   // Base Components (Geometric/Terminal Aesthetic)
   let top    = "  [===================]  ";
   let brow   = " /                     \\ ";

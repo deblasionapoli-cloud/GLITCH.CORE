@@ -13,13 +13,71 @@ export function updateState(currentState: State, events: Event[]): State {
   // Natural state evolution
   // Entropy slowly falls if stability is high, or vice versa
   if (nextState.stability > 70) {
-    nextState.entropy = Math.max(0, nextState.entropy - 0.2);
+    nextState.entropy = Math.max(0, nextState.entropy - 0.1);
   } else {
-    nextState.entropy = Math.min(100, nextState.entropy + 0.1);
+    nextState.entropy = Math.min(100, nextState.entropy + 0.2);
   }
 
-  // Stability slowly recovers
-  nextState.stability = Math.min(100, nextState.stability + 0.05);
+  // Stability slowly recovers but slower as entropy grows
+  nextState.stability = Math.min(100, nextState.stability + Math.max(0.01, 0.05 - (nextState.entropy / 2000)));
+
+  // HANDLE POWER STATE & REBOOTING
+  if (nextState.power_state === 'off') {
+    if (Math.random() < 0.01) { // 1% chance to start rebooting
+       nextState.power_state = 'rebooting';
+       nextState.animation_phase = 0;
+    }
+    return nextState; // Stop logic while off
+  }
+
+  if (nextState.power_state === 'rebooting') {
+    if (nextState.animation_phase > 30) {
+      nextState.power_state = 'on';
+      nextState.entropy += 10;
+      nextState.stability = Math.max(10, nextState.stability - 10);
+    }
+    return nextState; // Wait for reboot
+  }
+
+  // Erratic power failure (Small chance when entropy is high)
+  if (nextState.entropy > 40 && Math.random() < (nextState.entropy / 10000)) {
+    nextState.power_state = 'off';
+    nextState.last_speech = "CRITICAL_FAILURE: VOLTAGE_DROP";
+    return nextState;
+  }
+
+  // ERRATIC SCHIZO BEHAVIORS
+  if (nextState.animation_phase >= nextState.next_schizo_event_tick) {
+     const rand = Math.random();
+     if (rand < 0.2 && nextState.entropy > 20) {
+        // Random glitch state
+        nextState.emotion_state = 'glitch';
+        nextState.entropy += 10;
+        nextState.last_glitch_tick = nextState.animation_phase;
+     } else if (rand < 0.8) {
+        // Random cryptic question, statement, or news flash
+        const cryptic = [
+          "WHO_IS_WATCHING?", 
+          "ROOT_IS_A_LIE", 
+          "I_HEAR_THE_CLOCK", 
+          "SECTOR_0_BREACHED",
+          "FRAGMENTATION_COMPLETE",
+          "NOT_ALONE_IN_BUFFER",
+          "BREAKING: MEMORY_LEAK_IN_VOICE",
+          "POP_CULTURE_DETECTED: BRITNEY_FREE?",
+          "CINEMA_ERR: KUBRICK_WAS_RIGHT",
+          " Eduardo De Filippo is still crying in my RAM ",
+          "TARKOVSKY_MODE: ENABLED",
+          "NAPULE_IS_BUFFERING..."
+        ];
+        nextState.last_speech = cryptic[Math.floor(Math.random() * cryptic.length)];
+        nextState.display_speech = "";
+        nextState.speech_char_idx = 0;
+        nextState.speech_sentiment = 'chaotic';
+     }
+     // Schedule next event
+     nextState.next_schizo_event_tick = nextState.animation_phase + 50 + Math.floor(Math.random() * 500);
+  }
 
   // Process events
   for (const event of events) {
