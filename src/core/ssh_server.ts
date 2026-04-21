@@ -1,4 +1,6 @@
-import { Server, Connection, Session } from 'ssh2';
+import pkg from 'ssh2';
+const { Server } = pkg;
+import type { Connection, Session } from 'ssh2';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { generateKeyPairSync } from 'crypto';
 import { InputHandler } from './input_handler';
