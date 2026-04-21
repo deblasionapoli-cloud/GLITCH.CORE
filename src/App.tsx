@@ -160,35 +160,35 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center p-0 overflow-hidden select-none">
+    <div className="w-full h-full bg-black flex items-center justify-center p-0 overflow-hidden select-none relative">
       {/* Scanline Overlay */}
       <div className="fixed inset-0 pointer-events-none z-50 opacity-15 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,2px_100%]" />
 
-      {/* 480x272 Monitor Container */}
+      {/* Auto-Interfacing Container (Liquid) */}
       <div 
-        className="relative w-[480px] h-[272px] bg-black border border-[#001100] flex flex-col items-center justify-center py-4 px-2 overflow-hidden"
+        className="w-full h-full flex flex-col items-center justify-center py-2 px-2"
         style={{ 
-          background: `radial-gradient(circle_at_50%_50%, rgba(0,20,0,0.05) 0%, black 100%)`
+          background: `radial-gradient(circle at 50% 50%, rgba(0,20,0,0.05) 0%, black 100%)`
         }}
       >
-        {/* Entropy Glow (Extremely subtle) */}
+        {/* Entropy Glow */}
         <div 
           className="absolute inset-0 pointer-events-none z-0 transition-opacity duration-1000"
           style={{ 
-            background: `radial-gradient(circle_at_50%_50%, rgba(255,0,0,${state.entropy/1000}) 0%, transparent 80%)`,
+            background: `radial-gradient(circle at 50% 50%, rgba(255,0,0,${state.entropy/1000}) 0%, transparent 80%)`,
             opacity: state.entropy / 100
           }} 
         />
 
-        {/* ASCII Framebuffer Only */}
-        <div className="w-full z-10 flex flex-col items-center">
-          <pre className="text-[10px] md:text-[11px] leading-[1.2] font-mono text-[#00FF00] drop-shadow-[0_0_2px_rgba(0,255,0,0.4)] text-center">
+        {/* Dynamic ASCII Content */}
+        <div className="w-full h-full z-10 flex flex-col items-center justify-center overflow-hidden">
+          <pre className="text-[3.2vw] leading-tight font-mono text-[#00FF00] drop-shadow-[0_0_2px_rgba(0,255,0,0.4)] text-center whitespace-pre-wrap">
             {frame}
           </pre>
         </div>
 
         {/* Hidden Global Input Listener (for preview interactions) */}
-        <p className="absolute bottom-1 right-1 text-[5px] text-[#001100] opacity-10">L_STB: {Math.floor(state.stability)} CMD_WAIT</p>
+        <p className="absolute bottom-1 right-1 text-[8px] font-mono text-[#003300] opacity-30">STB: {Math.floor(state.stability)} CMD_WAIT</p>
         <input 
           type="text"
           value={input}
