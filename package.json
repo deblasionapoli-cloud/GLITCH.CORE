@@ -13,7 +13,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "start": "node dist/server.bundle.cjs",
-    "build:lean": "npm run build && esbuild server.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/server.bundle.cjs --external:ssh2 && echo 'BUILD_COMPLETE: Run with node dist/server.bundle.cjs'"
+    "build:lean": "npm run build && esbuild server.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/server.bundle.cjs --external:ssh2 --external:vite --external:fsevents --minify && echo 'BUILD_COMPLETE: Run with node dist/server.bundle.cjs'"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
