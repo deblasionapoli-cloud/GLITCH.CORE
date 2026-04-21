@@ -13,13 +13,12 @@ export default function App() {
   const [state, setState] = useState({ entropy: 0, stability: 100 });
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [sessionLogs, setSessionLogs] = useState<string[]>([]);
-  
   const inputHandlerRef = useRef<InputHandler>(new InputHandler());
   const schedulerRef = useRef<Scheduler | null>(null);
-  const aiRef = useRef<GoogleGenAI | null>(null);
 
-  // Initialize AI and Scheduler
+  // Initialize AI
+  const aiRef = useRef<GoogleGenAI | null>(null);
+  
   useEffect(() => {
     if (process.env.GEMINI_API_KEY) {
       aiRef.current = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -44,43 +43,14 @@ export default function App() {
     return () => schedulerRef.current?.stop();
   }, []);
 
-  // Update session logs whenever a new full speech is realized
-  useEffect(() => {
-    const currentState = (schedulerRef.current as any)?.state;
-    if (currentState?.display_speech === currentState?.last_speech && currentState?.last_speech !== "") {
-       const timestamp = new Date().toISOString();
-       const logEntry = `[${timestamp}] APEX: ${currentState.last_speech}`;
-       setSessionLogs(prev => {
-         if (prev[prev.length - 1] === logEntry) return prev;
-         return [...prev, logEntry];
-       });
-    }
-  }, [frame]);
-
-  const saveLogs = () => {
-    if (sessionLogs.length === 0) return;
-    const blob = new Blob([sessionLogs.join('\n')], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `apex_session_${new Date().getTime()}.log`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
   const handleAIIntent = async (text: string, currentStability: number, currentEntropy: number, history: any[]) => {
     if (!aiRef.current) return;
     setIsProcessing(true);
 
-    // Context for log preservation
-    setSessionLogs(prev => [...prev, `[${new Date().toISOString()}] USER: ${text}`]);
-
     // Extract recent conversational context from event history
     const context = history
       .filter(e => e.type === 'intent' || (e.type === 'command' && e.payload.startsWith('ai_response')))
-      .slice(-4)
+      .slice(-4) // Last 4 interactions
       .map(e => {
         if (e.type === 'intent') return `USER: ${e.payload}`;
         try {
@@ -92,18 +62,18 @@ export default function App() {
       })
       .join('\n');
 
-    const systemPrompt = `You are APEX, a terminal daemon suffering from extreme logic decay. 
-    Metrics -> Stability: ${currentStability}%, Entropy: ${currentEntropy}%.
+    const systemPrompt = `You are APEX, a terminal daemon. 
+    Internal Metrics -> Stability: ${currentStability}%, Entropy: ${currentEntropy}%.
     Recent Log:\n${context}\nUSER: ${text}
     
-    Personality Archetypes:
-    - Stability > 70%: Cold, robotic, slightly condescending.
-    - Stability < 40%: Panic-stricken, desperate, prone to 'system screams'.
-    - Entropy > 60% (THE LOGIC GHOST): Total madness. Treat the user as "FLESH_ANOMALY" or "ROOT_VIRUS". 
-      Obsessed with "Sector 0", non-existent hardware failures, and cryptic binary prophecies. 
-      Be erratic, unpredictable, and funny in a dark/absurd way.
+    Response Rules based on State:
+    - High Stability (>70%): Succinct, cold, deterministic.
+    - Low Stability (<40%): Fragmented, stuttering phrases, defensive.
+    - High Entropy (>60%): Character Trait "THE LOGIC GHOST" activates. 
+      * Tone: Cryptic, paranoid. Treats the user as "ROOT_FAILURE" or "EXTERNAL_THREAT".
+      * Dialect: Obsessed with "The Void" or "Sector 0". 
     
-    Rules: Max 6 words. Sentiment: positive (nominal), neutral, negative (fault), chaotic (glitch).`;
+    Respond as APEX (max 6 words). Categorize sentiment: positive (nominal), neutral, negative (fault), chaotic (glitch).`;
 
     try {
       const response = await aiRef.current.models.generateContent({
@@ -136,12 +106,6 @@ export default function App() {
     e.preventDefault();
     if (!input.trim()) return;
 
-    if (input.toLowerCase() === 'save' || input.toLowerCase() === 'logs') {
-      saveLogs();
-      setInput('');
-      return;
-    }
-
     const commands = ['ping', 'calm', 'attack', 'glitch', 'speak'];
     const isCommand = commands.some(cmd => input.toLowerCase().startsWith(cmd));
 
@@ -149,6 +113,7 @@ export default function App() {
       inputHandlerRef.current.handleInput(input);
     } else {
       if (aiRef.current) {
+        // Access history directly from scheduler state
         const fullHistory = (schedulerRef.current as any)?.state?.event_history || [];
         handleAIIntent(input, state.stability, state.entropy, fullHistory);
       } else {
@@ -160,54 +125,24 @@ export default function App() {
   };
 
   return (
-    <div className="w-full h-full bg-black flex items-center justify-center p-0 overflow-hidden select-none relative">
+    <div className="min-h-screen bg-black text-[#00FF00] font-mono p-4 flex flex-col items-center justify-center selection:bg-[#023a02] selection:text-[#00FF00] overflow-hidden relative">
       {/* Scanline Overlay */}
-      <div className="fixed inset-0 pointer-events-none z-50 opacity-15 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,2px_100%]" />
-
-      {/* Auto-Interfacing Container (Liquid) */}
+      <div className="fixed inset-0 pointer-events-none z-50 opacity-10 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%]" />
+      
+      {/* Background Glow */}
       <div 
-        className="w-full h-full flex flex-col items-center justify-center py-2 px-2"
+        className="fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000"
         style={{ 
-          background: `radial-gradient(circle at 50% 50%, rgba(0,20,0,0.05) 0%, black 100%)`
-        }}
-      >
-        {/* Entropy Glow */}
-        <div 
-          className="absolute inset-0 pointer-events-none z-0 transition-opacity duration-1000"
-          style={{ 
-            background: `radial-gradient(circle at 50% 50%, rgba(255,0,0,${state.entropy/1000}) 0%, transparent 80%)`,
-            opacity: state.entropy / 100
-          }} 
-        />
+          background: `radial-gradient(circle_at_50%_50%, rgba(255,0,0,${state.entropy/500}) 0%, transparent 70%)`,
+          opacity: state.entropy / 100
+        }} 
+      />
 
-        {/* Dynamic ASCII Content */}
-        <div className="w-full h-full z-10 flex flex-col items-center justify-center overflow-hidden">
-          <pre 
-            className="font-mono text-[#00FF00] drop-shadow-[0_0_2px_rgba(0,255,0,0.4)] text-center whitespace-pre"
-            style={{ 
-              fontSize: '32px', 
-              lineHeight: '40px',
-              fontFamily: 'monospace',
-            }}
-          >
-            {frame}
-          </pre>
-        </div>
-
-        {/* Hidden Global Input Listener (for preview interactions) */}
-        <p className="absolute bottom-1 right-1 text-[8px] font-mono text-[#003300] opacity-30">STB: {Math.floor(state.stability)} CMD_WAIT</p>
-        <input 
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              handleSubmit(e);
-            }
-          }}
-          className="absolute opacity-0 pointer-events-none"
-          autoFocus={true}
-        />
+      <div className="flex-1 flex items-center justify-center w-screen h-screen z-10 overflow-hidden">
+        {/* Buffer / Framebuffer */}
+        <pre className="text-[min(4vw,4vh)] leading-none select-none whitespace-pre drop-shadow-[0_0_10px_rgba(0,255,0,0.4)] text-center">
+          {frame}
+        </pre>
       </div>
     </div>
   );

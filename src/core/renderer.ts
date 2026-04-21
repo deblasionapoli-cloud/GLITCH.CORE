@@ -28,13 +28,6 @@ export function renderFrame(state: State): string {
     top    = "  [vvvvvvvvvvvvvvvvvvv]  ";
     eyes   = "|    [ > ]     [ < ]    |";
     mouth  = "|    {WWWWWWWWWWW}    |";
-  } else if (emotion_state === 'smug') {
-    eyes   = "|    [ - ]     [ - ]    |";
-    mouth  = "|      /--------~     |";
-  } else if (emotion_state === 'panic') {
-    eyes   = "|    [ ! ]     [ ! ]    |";
-    mouth  = "|   (  O O O O O  )   |";
-    top    = "  [?#?#?#?#?#?#?#?#?#?]  ";
   }
 
   // ENTROPY DISTORTION (Distinctive Trait)
@@ -73,9 +66,7 @@ export function renderFrame(state: State): string {
     const logs = [
       "0xAF42", "SYS_INT", "IO_WAIT", "PX_INIT", "MEM_DUMP", "NET_SYNC", 
       "IRQ_7", "DMA_SET", "VEC_RDY", "CRON_Q", "S_PIPE", "KERN_OK",
-      "X_BOOT", "L_CORE", "P_BUSY", "SYSCALL", "SIGTERM", "0xFF01",
-      "RUN_CMD", "SUDO_CRY", "RM_ROOT", "CAT_PIPE", "KILL_9", "HELP_ME",
-      "VOID_V", "HEX_GOD", "NULL_PTR", "SEG_FAULT", "STACK_OV", "COFFEE"
+      "X_BOOT", "L_CORE", "P_BUSY", "SYSCALL", "SIGTERM", "0xFF01"
     ];
     const result = [];
     for (let i = 0; i < 8; i++) {
@@ -113,39 +104,13 @@ export function renderFrame(state: State): string {
       return `${l.padEnd(12)} ${line} ${r.padStart(12)}`;
   });
 
-  // Apply Smoke (Physical Particles)
-  // We'll overlay them on the mergedLines
-  state.smoke.forEach(p => {
-    const py = Math.floor(p.y);
-    if (py >= 0 && py < mergedLines.length) {
-       const line = mergedLines[py];
-       const px = Math.min(line.length - 1, Math.max(0, 15 + Math.floor(p.x)));
-       mergedLines[py] = line.substring(0, px) + p.char + line.substring(px + 1);
-    }
-  });
-
-  // Apply Glitch Particles
-  state.particles.forEach(p => {
-    const py = Math.floor(p.y);
-    if (py >= 0 && py < mergedLines.length) {
-       const line = mergedLines[py];
-       const px = Math.min(line.length - 1, Math.max(0, 15 + Math.floor(p.x)));
-       mergedLines[py] = line.substring(0, px) + p.char + line.substring(px + 1);
-    }
-  });
-
-  let frame = [
+  const frame = [
     "",
     ...mergedLines,
     "",
     `[ ${finalSpeech} ]`,
     ""
   ].join('\n');
-
-  if (state.intrusion_alert && animation_phase % 10 < 5) {
-     const banner = "!! INTRUSION_DETECTED !!".padStart(40, ' ').padEnd(50, ' ');
-     frame = `\n${banner}\n` + frame;
-  }
 
   return frame;
 }

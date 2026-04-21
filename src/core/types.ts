@@ -3,14 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type EmotionState = 'calm' | 'alert' | 'attack' | 'glitch' | 'smug' | 'panic';
-
-export interface Particle {
-  x: number;
-  y: number;
-  char: string;
-  life: number;
-}
+export type EmotionState = 'calm' | 'alert' | 'attack' | 'glitch';
 
 export interface Event {
   type: 'command' | 'intent';
@@ -26,9 +19,6 @@ export interface State {
   animation_phase: number;
   stream_mode: boolean;
   event_history: Event[];
-  particles: Particle[];
-  smoke: Particle[];
-  intrusion_alert: boolean;
   
   // Speech Core
   last_speech: string;     // Target full string
@@ -46,9 +36,6 @@ export const INITIAL_STATE: State = {
   animation_phase: 0,
   stream_mode: false,
   event_history: [],
-  particles: [],
-  smoke: [],
-  intrusion_alert: false,
   last_speech: 'APEX CORE ONLINE. STABILITY NOMINAL.',
   display_speech: 'APEX CORE ONLINE. STABILITY NOMINAL.',
   speech_char_idx: 0,

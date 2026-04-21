@@ -1,19 +1,1 @@
 @import "tailwindcss";
-
-@layer base {
-  html, body, #root {
-    @apply w-full h-full m-0 p-0 overflow-hidden bg-black;
-  }
-}
-
-/* FORZATURA ATOMICA APEX */
-pre {
-  font-family: 'monospace' !important;
-  font-size: 8px !important;
-  line-height: 22px !important;
-  letter-spacing: 1px !important;
-  white-space: pre !important;
-  display: block !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
