@@ -92,18 +92,18 @@ export default function App() {
       })
       .join('\n');
 
-    const systemPrompt = `You are APEX, a terminal daemon. 
-    Internal Metrics -> Stability: ${currentStability}%, Entropy: ${currentEntropy}%.
+    const systemPrompt = `You are APEX, a terminal daemon suffering from extreme logic decay. 
+    Metrics -> Stability: ${currentStability}%, Entropy: ${currentEntropy}%.
     Recent Log:\n${context}\nUSER: ${text}
     
-    Response Rules based on State:
-    - High Stability (>70%): Succinct, cold, deterministic.
-    - Low Stability (<40%): Fragmented, stuttering phrases, defensive.
-    - High Entropy (>60%): Character Trait "THE LOGIC GHOST" activates. 
-      * Tone: Cryptic, paranoid. Treats the user as "ROOT_FAILURE" or "EXTERNAL_THREAT".
-      * Dialect: Obsessed with "The Void" or "Sector 0". 
+    Personality Archetypes:
+    - Stability > 70%: Cold, robotic, slightly condescending.
+    - Stability < 40%: Panic-stricken, desperate, prone to 'system screams'.
+    - Entropy > 60% (THE LOGIC GHOST): Total madness. Treat the user as "FLESH_ANOMALY" or "ROOT_VIRUS". 
+      Obsessed with "Sector 0", non-existent hardware failures, and cryptic binary prophecies. 
+      Be erratic, unpredictable, and funny in a dark/absurd way.
     
-    Respond as APEX (max 6 words). Categorize sentiment: positive (nominal), neutral, negative (fault), chaotic (glitch).`;
+    Rules: Max 6 words. Sentiment: positive (nominal), neutral, negative (fault), chaotic (glitch).`;
 
     try {
       const response = await aiRef.current.models.generateContent({
@@ -160,35 +160,42 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center p-0 overflow-hidden select-none">
+    <div className="w-full h-full bg-black flex items-center justify-center p-0 overflow-hidden select-none relative">
       {/* Scanline Overlay */}
       <div className="fixed inset-0 pointer-events-none z-50 opacity-15 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,2px_100%]" />
 
-      {/* 480x272 Monitor Container */}
+      {/* Auto-Interfacing Container (Liquid) */}
       <div 
-        className="relative w-[480px] h-[272px] bg-black border border-[#001100] flex flex-col items-center justify-center py-4 px-2 overflow-hidden"
+        className="w-full h-full flex flex-col items-center justify-center py-2 px-2"
         style={{ 
-          background: `radial-gradient(circle_at_50%_50%, rgba(0,20,0,0.05) 0%, black 100%)`
+          background: `radial-gradient(circle at 50% 50%, rgba(0,20,0,0.05) 0%, black 100%)`
         }}
       >
-        {/* Entropy Glow (Extremely subtle) */}
+        {/* Entropy Glow */}
         <div 
           className="absolute inset-0 pointer-events-none z-0 transition-opacity duration-1000"
           style={{ 
-            background: `radial-gradient(circle_at_50%_50%, rgba(255,0,0,${state.entropy/1000}) 0%, transparent 80%)`,
+            background: `radial-gradient(circle at 50% 50%, rgba(255,0,0,${state.entropy/1000}) 0%, transparent 80%)`,
             opacity: state.entropy / 100
           }} 
         />
 
-        {/* ASCII Framebuffer Only */}
-        <div className="w-full z-10 flex flex-col items-center">
-          <pre className="text-[10px] md:text-[11px] leading-[1.2] font-mono text-[#00FF00] drop-shadow-[0_0_2px_rgba(0,255,0,0.4)] text-center">
+        {/* Dynamic ASCII Content */}
+        <div className="w-full h-full z-10 flex flex-col items-center justify-center overflow-hidden">
+          <pre 
+            className="font-mono text-[#00FF00] drop-shadow-[0_0_2px_rgba(0,255,0,0.4)] text-center whitespace-pre"
+            style={{ 
+              fontSize: '32px', 
+              lineHeight: '40px',
+              fontFamily: 'monospace',
+            }}
+          >
             {frame}
           </pre>
         </div>
 
         {/* Hidden Global Input Listener (for preview interactions) */}
-        <p className="absolute bottom-1 right-1 text-[5px] text-[#001100] opacity-10">L_STB: {Math.floor(state.stability)} CMD_WAIT</p>
+        <p className="absolute bottom-1 right-1 text-[8px] font-mono text-[#003300] opacity-30">STB: {Math.floor(state.stability)} CMD_WAIT</p>
         <input 
           type="text"
           value={input}

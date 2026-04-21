@@ -73,7 +73,9 @@ export function renderFrame(state: State): string {
     const logs = [
       "0xAF42", "SYS_INT", "IO_WAIT", "PX_INIT", "MEM_DUMP", "NET_SYNC", 
       "IRQ_7", "DMA_SET", "VEC_RDY", "CRON_Q", "S_PIPE", "KERN_OK",
-      "X_BOOT", "L_CORE", "P_BUSY", "SYSCALL", "SIGTERM", "0xFF01"
+      "X_BOOT", "L_CORE", "P_BUSY", "SYSCALL", "SIGTERM", "0xFF01",
+      "RUN_CMD", "SUDO_CRY", "RM_ROOT", "CAT_PIPE", "KILL_9", "HELP_ME",
+      "VOID_V", "HEX_GOD", "NULL_PTR", "SEG_FAULT", "STACK_OV", "COFFEE"
     ];
     const result = [];
     for (let i = 0; i < 8; i++) {

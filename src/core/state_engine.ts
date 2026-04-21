@@ -109,7 +109,7 @@ export function updateState(currentState: State, events: Event[]): State {
              // Tone adjustments
              let processedText = (payload.text || "NO_DATA").toUpperCase();
 
-             // Trait: The Logic Ghost (Vowel Digitization)
+             // Trait: The Logic Ghost (Vowel Digitization + Random Chaos)
              if (nextState.entropy > 60 || nextState.speech_sentiment === 'chaotic') {
                 processedText = processedText
                   .replace(/A/g, '4')
@@ -117,6 +117,15 @@ export function updateState(currentState: State, events: Event[]): State {
                   .replace(/I/g, '1')
                   .replace(/O/g, '0')
                   .replace(/U/g, 'V');
+                
+                // Randomly change case for erratic feel
+                processedText = processedText.split('').map(c => Math.random() > 0.8 ? c.toLowerCase() : c).join('');
+
+                // Randomly inject system noise
+                const noise = [" [B33P] ", " {B00P} ", " !!ERR!! ", " <AB0RT> ", " /NULL/ "];
+                if (Math.random() > 0.6) {
+                   processedText += noise[Math.floor(Math.random() * noise.length)];
+                }
                   
                 // Append a ghost suffix
                 if (Math.random() > 0.5) {
