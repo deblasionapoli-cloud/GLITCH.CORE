@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type EmotionState = 'calm' | 'alert' | 'attack' | 'glitch' | 'dead';
+export type EmotionState = 'calm' | 'alert' | 'attack' | 'glitch' | 'dead' | 'nostalgic' | 'melancholic' | 'schizo';
 
 export interface Event {
   type: 'command' | 'intent' | 'system';

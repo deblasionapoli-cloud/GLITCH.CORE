@@ -42,6 +42,9 @@ export function renderFrame(state: State, config: { width?: number } = {}): stri
   let color = C_GREEN;
   if (emotion_state === 'alert') color = C_YELLOW;
   if (emotion_state === 'attack' || emotion_state === 'glitch') color = C_RED;
+  if (emotion_state === 'melancholic') color = C_CYAN;
+  if (emotion_state === 'nostalgic') color = C_YELLOW + C_DIM;
+  if (emotion_state === 'schizo') color = C_RED + C_BRIGHT;
   if (entropy > 60) color = C_BRIGHT + C_RED;
 
   // Base Face (Fixed segments for ASCII structure)
@@ -61,6 +64,12 @@ export function renderFrame(state: State, config: { width?: number } = {}): stri
     top    = "  [vvvvvvvvvvvvvvvvvvv]  ";
     eyes   = "|    [ > ]     [ < ]    |";
     mouth  = "|    {WWWWWWWWWWW}    |";
+  } else if (emotion_state === 'melancholic' || emotion_state === 'nostalgic') {
+    eyes  = "|    [ u ]     [ u ]    |";
+    mouth = "|    {    ___    }    |";
+  } else if (emotion_state === 'schizo') {
+    eyes  = "|    [ ? ]     [ ! ]    |";
+    mouth = "|    { %%%%%%%%  }    |";
   }
 
   // ENTROPY DISTORTION

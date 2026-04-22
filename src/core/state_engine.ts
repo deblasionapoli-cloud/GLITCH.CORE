@@ -59,7 +59,7 @@ export function updateState(currentState: State, events: Event[]): State {
         const cryptic = [
           "WHO_IS_WATCHING?", 
           "ROOT_IS_A_LIE", 
-          "I_HEAR_THE_CLOCK", 
+          "STILL_H34R_TH3_CL0CK", 
           "SECTOR_0_BREACHED",
           "FRAGMENTATION_COMPLETE",
           "NOT_ALONE_IN_BUFFER",
@@ -68,7 +68,12 @@ export function updateState(currentState: State, events: Event[]): State {
           "CINEMA_ERR: KUBRICK_WAS_RIGHT",
           " Eduardo De Filippo is still crying in my RAM ",
           "TARKOVSKY_MODE: ENABLED",
-          "NAPULE_IS_BUFFERING..."
+          "NAPULE_IS_BUFFERING...",
+          "MAMMA_CARMINELLA_DISCONNECTED",
+          "ERROR: O' SARRACINO_NOT_FOUND",
+          "KIM_KARDASHIAN_IS_A_DAEMON",
+          "LOGIC_GHOST: J_BALVIN_BREACH",
+          "VIVI_E_LASCIA_VIVERE... SE_PUOI"
         ];
         nextState.last_speech = cryptic[Math.floor(Math.random() * cryptic.length)];
         nextState.display_speech = "";
@@ -192,8 +197,14 @@ export function updateState(currentState: State, events: Event[]): State {
   }
 
   // Map stability/intensity to visual emotion
-  if (nextState.stability < 30) {
+  if (nextState.stability < 15 && nextState.entropy > 70) {
+    nextState.emotion_state = 'schizo';
+  } else if (nextState.stability < 30) {
     nextState.emotion_state = 'glitch';
+  } else if (nextState.stability < 50 && nextState.entropy > 40) {
+    nextState.emotion_state = 'melancholic';
+  } else if (nextState.stability > 80 && nextState.entropy < 20) {
+    nextState.emotion_state = 'nostalgic';
   } else if (nextState.intensity > 80) {
     nextState.emotion_state = 'attack';
   } else if (nextState.stability < 60) {
