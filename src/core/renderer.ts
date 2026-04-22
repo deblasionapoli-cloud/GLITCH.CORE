@@ -9,6 +9,9 @@ import { State } from './types';
  * Pure transformation layer: State -> ASCII Frame
  */
 export function renderFrame(state: State): string {
+  if (!state) {
+    return "ERROR: STATE_UNDEFINED\n[ SYSTEM_HALTED ]";
+  }
   const { emotion_state, animation_phase, intensity } = state;
   
   // Animation jitter logic based on intensity/state

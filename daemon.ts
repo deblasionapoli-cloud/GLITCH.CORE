@@ -27,7 +27,7 @@ rl.on('line', (line) => {
 
 console.clear();
 
-const scheduler = new Scheduler(inputHandler, (frame) => {
+const scheduler = new Scheduler(inputHandler, (frame, _state) => {
   // Clear screen and reset cursor
   process.stdout.write('\x1b[2J\x1b[0;0H');
   process.stdout.write(frame);

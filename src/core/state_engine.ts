@@ -3,13 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { State, Event, EmotionState } from './types';
+import { State, Event, EmotionState, INITIAL_STATE } from './types';
 
 /**
  * Pure function state transition layer.
  * next_state = f(current_state, event_batch)
  */
 export function updateState(currentState: State, events: Event[]): State {
+  if (!currentState) {
+    currentState = { ...INITIAL_STATE };
+  }
   let nextState = { ...currentState };
 
   // Update animation phase (deterministic loop)

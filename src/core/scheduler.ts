@@ -11,11 +11,11 @@ import { InputHandler } from './input_handler';
 export class Scheduler {
   private state: State = { ...INITIAL_STATE };
   private inputHandler: InputHandler;
-  private onFrame: (frame: string) => void;
+  private onFrame: (frame: string, state: State) => void;
   private interval: NodeJS.Timeout | null = null;
   private tickRate = 100; // 10 FPS
 
-  constructor(inputHandler: InputHandler, onFrame: (frame: string) => void) {
+  constructor(inputHandler: InputHandler, onFrame: (frame: string, state: State) => void) {
     this.inputHandler = inputHandler;
     this.onFrame = onFrame;
   }
@@ -39,6 +39,6 @@ export class Scheduler {
     const events = this.inputHandler.drainQueue();
     this.state = updateState(this.state, events);
     const frame = renderFrame(this.state);
-    this.onFrame(frame);
+    this.onFrame(frame, this.state);
   }
 }
