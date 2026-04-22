@@ -1,10 +1,10 @@
 [Unit]
-Description=APEX Terminal Core Daemon
+Description=Donkey Kong SSH Core Daemon
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/npx tsx /opt/apex-core/daemon.ts
-WorkingDirectory=/opt/apex-core
+ExecStart=/usr/bin/npx tsx /opt/donkey-kong/daemon.ts
+WorkingDirectory=/opt/donkey-kong
 StandardInput=tty
 StandardOutput=tty
 TTYPath=/dev/tty1
