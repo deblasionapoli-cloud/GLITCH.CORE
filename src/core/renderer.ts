@@ -139,20 +139,32 @@ export function renderFrame(state: State): string {
     "    '___________________'  "
   ];
 
-  // --- HORIZONTAL SCALE x1.7 (1.3x again) ---
+  // --- SPRITE SCALING (Horizontal ~2.2x, Vertical ~1.3x) ---
+  // Horizontal scaling
   spriteLines = spriteLines.map(line => {
     let scaled = "";
     for (let i = 0; i < line.length; i++) {
       const char = line[i];
       scaled += char;
-      // Approx 1.7x: double 2 out of every 3 characters
-      // Exception: don't double 'C' to keep the logo single
-      if (i % 3 !== 2 && char !== 'C') {
+      // 2.2x factor: double every character, and triple every 5th character
+      if (char !== 'C') {
         scaled += char;
+        if (i % 5 === 0) scaled += char;
       }
     }
     return scaled;
   });
+
+  // Vertical scaling (approx 1.3x)
+  const verticallyScaled: string[] = [];
+  for (let i = 0; i < spriteLines.length; i++) {
+    verticallyScaled.push(spriteLines[i]);
+    // Duplicate every 3rd line to get ~1.3x height
+    if (i % 3 === 2) {
+      verticallyScaled.push(spriteLines[i]);
+    }
+  }
+  spriteLines = verticallyScaled;
 
   // --- ENTROPY & GLITCH OVERLAY ---
   const entropy = state.intensity / 100;

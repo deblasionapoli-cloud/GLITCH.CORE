@@ -11,6 +11,7 @@ import { askDaemon } from './services/aiService';
 import { auth, signIn, signOut } from './services/memoryService';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { Maximize2, Minimize2 } from 'lucide-react';
+import { motion } from 'motion/react';
 
 import { imageToAscii } from './utils/imageUtils';
 
@@ -205,27 +206,35 @@ export default function App() {
     const iScale = intensity / 100;
     const isProcessing = last_command_phase >= 0 && (animation_phase - last_command_phase < 5);
 
-    if (isProcessing) return 'text-[#FFFFFF] brightness-200 drop-shadow-[0_0_15px_rgba(255,255,255,0.8)]';
+    if (isProcessing) return 'text-phosphor-white glow-white brightness-125';
 
     if (emotion_state === 'glitch') {
-      const glitchColors = ['text-[#00FF00]', 'text-[#FF0000]', 'text-[#FFFFFF]', 'text-[#FFFF00]', 'text-[#00FFFF]', 'text-[#FF00FF]'];
+      const glitchThemes = [
+        'text-phosphor-green glow-green', 
+        'text-phosphor-red glow-red', 
+        'text-phosphor-white glow-white', 
+        'text-phosphor-amber glow-amber', 
+        'text-phosphor-cyan glow-cyan', 
+        'text-phosphor-magenta glow-magenta'
+      ];
       const speed = Math.max(1, Math.floor(10 - iScale * 8));
-      const colorIdx = (animation_phase % speed === 0) 
-        ? Math.floor(Math.random() * glitchColors.length)
-        : Math.floor((animation_phase / 5) % glitchColors.length);
-      return glitchColors[colorIdx];
+      const idx = (animation_phase % speed === 0) 
+        ? Math.floor(Math.random() * glitchThemes.length)
+        : Math.floor((animation_phase / 5) % glitchThemes.length);
+      return glitchThemes[idx];
     }
 
-    if (emotion_state === 'attack') return 'text-[#FF3300] drop-shadow-[0_0_12px_rgba(255,51,0,0.6)]';
+    if (emotion_state === 'attack') return 'text-phosphor-red glow-red';
     
     // Kintsugi Color Shift
-    if (color_mode === 'warm') return 'text-[#FFB347] drop-shadow-[0_0_12px_rgba(255,179,71,0.5)]'; // Amber/Warm
+    if (color_mode === 'warm') return 'text-phosphor-amber glow-amber'; 
 
-    if (emotion_state === 'alert' || iScale > 0.5) return 'text-[#FFCC00] drop-shadow-[0_0_8px_rgba(255,204,0,0.4)]';
-    if (emotion_state === 'curious') return 'text-[#00FFFF] drop-shadow-[0_0_8px_rgba(0,255,255,0.4)]';
-    if (emotion_state === 'surprised') return 'text-[#FF00FF] drop-shadow-[0_0_8px_rgba(255,0,255,0.4)]';
+    if (emotion_state === 'alert' || iScale > 0.5) return 'text-phosphor-amber glow-amber';
+    if (emotion_state === 'curious' || emotion_state === 'sad') return 'text-phosphor-cyan glow-cyan';
+    if (emotion_state === 'surprised') return 'text-phosphor-magenta glow-magenta';
+    if (emotion_state === 'bored') return 'text-phosphor-green opacity-70 brightness-75';
     
-    return 'text-[#00FF00] drop-shadow-[0_0_8px_rgba(0,255,0,0.4)]';
+    return 'text-phosphor-green glow-green';
   };
 
   const themeClass = getTerminalTheme();
@@ -266,77 +275,136 @@ export default function App() {
       </div>
 
       {/* Main Container */}
-      <div className="relative group">
-        {/* Decorative Border Glow */}
+      <div className="relative group flex flex-col items-center gap-4">
+        {/* Character Box */}
         <div 
-          className="absolute -inset-1 blur-xl opacity-0 group-hover:opacity-100 transition-all duration-1000"
-          style={{ 
-            backgroundColor: state.emotion_state === 'attack' ? 'rgba(255,0,0,0.1)' : 
-                            state.color_mode === 'warm' ? 'rgba(255,179,71,0.1)' :
-                            state.emotion_state === 'alert' ? 'rgba(255,255,0,0.05)' : 
-                            state.emotion_state === 'curious' ? 'rgba(0,255,255,0.05)' :
-                            state.emotion_state === 'surprised' ? 'rgba(255,0,255,0.05)' :
-                            'rgba(0,255,0,0.05)' 
-          }}
-        />
-        
-        <div 
-          ref={containerRef}
-          className={`relative flex flex-col items-center bg-black border border-white/5 rounded-sm px-2 py-2 backdrop-blur-sm shadow-2xl transition-all duration-300 overflow-hidden ${isFullscreen ? 'w-full h-full flex justify-center scale-110 lg:scale-150' : 'w-[480px] h-[272px]'}`}
+          className="relative group/box"
         >
-          {/* Fullscreen Toggle Button */}
-          <button 
-            onClick={toggleFullscreen}
-            className="absolute top-2 right-2 z-50 text-white/10 hover:text-white/60 transition-colors p-1"
-            title="Toggle Protocol (Fullscreen)"
+          {/* Decorative Border Glow */}
+          <div 
+            className="absolute -inset-2 blur-2xl opacity-10 group-hover/box:opacity-20 transition-all duration-1000"
+            style={{ 
+              backgroundColor: state.emotion_state === 'attack' ? '#FF3300' : 
+                              state.color_mode === 'warm' ? '#FFCC00' :
+                              state.emotion_state === 'alert' ? '#FFCC00' : 
+                              state.emotion_state === 'curious' || state.emotion_state === 'sad' ? '#00FFFF' :
+                              state.emotion_state === 'surprised' ? '#FF00FF' :
+                              state.emotion_state === 'glitch' ? '#FFFFFF' :
+                              '#00FF00' 
+            }}
+          />
+          
+          <div 
+            ref={containerRef}
+            className={`relative flex flex-col items-center bg-black border border-white/5 rounded-sm px-4 py-8 backdrop-blur-sm shadow-2xl transition-all duration-300 overflow-hidden ${isFullscreen ? 'fixed inset-0 w-screen h-screen z-40' : 'w-[90vw] max-w-[1000px] min-h-[500px]'}`}
           >
-            {isFullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-          </button>
+            {/* Fullscreen Toggle Button */}
+            <button 
+              onClick={toggleFullscreen}
+              className="absolute top-4 left-4 z-50 text-white/30 hover:text-white/80 transition-colors p-2"
+              title="Toggle Protocol (Fullscreen)"
+            >
+              {isFullscreen ? <Minimize2 size={24} /> : <Maximize2 size={18} />}
+            </button>
 
-          <pre 
-            className={`${themeClass} text-[10px] leading-none tracking-tight whitespace-pre flex flex-col items-center justify-center select-none transition-colors duration-200 overflow-hidden font-mono w-full flex-1`}
+            <pre 
+              className={`${themeClass} text-[1.4vw] lg:text-[14px] leading-[1.1] tracking-tight whitespace-pre flex flex-col items-center justify-center select-none transition-all duration-200 overflow-hidden font-mono w-full flex-1`}
+              style={{ fontSize: isFullscreen ? '1.8vh' : undefined }}
+            >
+              {frame.split('\n').map((line, i) => (
+                <div key={i} className="flex justify-center w-full">
+                  <span className="w-fit text-center">{line}</span>
+                </div>
+              ))}
+            </pre>
+          </div>
+        </div>
+
+        {/* Floating Input Dock (Separated) */}
+        {!isFullscreen && (
+          <motion.div 
+            animate={{ 
+              y: [0, -4, 0],
+            }}
+            transition={{
+              duration: 4,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+            className="w-[400px] flex items-center gap-4 bg-black/40 border border-white/5 rounded-full px-4 py-2 opacity-60 hover:opacity-100 focus-within:opacity-100 transition-all duration-300 backdrop-blur-md relative overflow-hidden"
           >
-            {frame.split('\n').map((line, i) => (
-              <div key={i} className="flex justify-center w-full">
-                <span className="w-[80ch] text-left">{line}</span>
-              </div>
-            ))}
-          </pre>
+            {/* Subtle Phosphor Line Underneath */}
+            <div 
+              className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-[1px] opacity-20 blur-[1px] transition-colors duration-500"
+              style={{ 
+                backgroundColor: state.emotion_state === 'attack' ? '#FF3300' : 
+                                state.color_mode === 'warm' ? '#FFCC00' :
+                                state.emotion_state === 'curious' ? '#00FFFF' :
+                                '#00FF00' 
+              }}
+            />
 
-          {/* Terminal Input */}
-          <div className="mt-1 w-full flex items-center gap-4 border-t border-white/10 pt-1 opacity-80 hover:opacity-100 focus-within:opacity-100 transition-all duration-300">
             <form onSubmit={handleSubmit} className="flex-1 flex items-center gap-2">
+              <span className={`${themeClass} text-[10px] opacity-40 font-bold tracking-widest`}>&gt;</span>
               <input 
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 disabled={isAiLoading}
-                className={`${themeClass} flex-1 bg-transparent border-none outline-none text-[12px] uppercase font-bold placeholder-[#ffffff33] tracking-widest ${isAiLoading ? 'opacity-20 animate-pulse' : ''}`}
-                placeholder={isAiLoading ? "PROCESSING_ERR..." : "SEND CMD TO GLITCH..."}
+                className={`${themeClass} flex-1 bg-transparent border-none outline-none text-[11px] uppercase font-bold placeholder-[#ffffff11] tracking-widest ${isAiLoading ? 'opacity-20 animate-pulse' : ''}`}
+                placeholder={isAiLoading ? "SYS_WAIT" : "GLITCH_CMD..."}
                 autoFocus
               />
             </form>
-
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-              className="hidden"
-            />
             
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileUpload}
+              className="hidden" 
+              accept=".txt,.json,.md,.js,.ts"
+            />
             <button 
               onClick={() => fileInputRef.current?.click()}
               disabled={isAiLoading}
-              className="text-white/20 hover:text-[#00FF00] transition-colors p-1"
+              className="text-white/10 hover:text-[#00FF00] transition-colors p-1"
               title="Upload data cluster (file)"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
             </button>
-          </div>
-
-        </div>
+          </motion.div>
+        )}
+        
+        {/* Fullscreen Input (Fixed overlay) */}
+        {isFullscreen && (
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ 
+              y: [0, -6, 0],
+              opacity: 1
+            }}
+            transition={{
+              y: { duration: 5, repeat: Infinity, ease: "easeInOut" },
+              opacity: { duration: 0.5 }
+            }}
+            className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[500px] flex items-center gap-4 bg-black/80 border border-white/5 rounded-sm px-6 py-3 opacity-20 hover:opacity-100 focus-within:opacity-100 transition-all duration-500 z-50 backdrop-blur-xl"
+          >
+             <form onSubmit={handleSubmit} className="flex-1 flex items-center gap-2">
+              <span className={`${themeClass} text-[12px] opacity-40 font-bold tracking-widest animate-pulse`}>CMD_</span>
+              <input 
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                disabled={isAiLoading}
+                className={`${themeClass} flex-1 bg-transparent border-none outline-none text-[14px] uppercase font-bold placeholder-[#ffffff11] tracking-widest ${isAiLoading ? 'opacity-20 animate-pulse' : ''}`}
+                placeholder={isAiLoading ? "..." : "TYPE_COMMAND"}
+                autoFocus
+              />
+            </form>
+          </motion.div>
+        )}
       </div>
 
       {/* Background Ambience */}
