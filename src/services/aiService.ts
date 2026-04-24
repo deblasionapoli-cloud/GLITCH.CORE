@@ -145,7 +145,7 @@ async function askLocalDaemon(prompt: string, isInitiative: boolean, systemPromp
     const response = await fetch(LOCAL_URL, {
       method: "POST",
       body: JSON.stringify({
-        model: "llama3.2:1b", // Switching to 1b for faster response in local dev
+        model: "tinyllama", 
         prompt: `System: ${systemPrompt}\nUser: ${contents}`,
         stream: false,
         options: {
