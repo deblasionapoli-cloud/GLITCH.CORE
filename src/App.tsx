@@ -81,7 +81,21 @@ export default function App() {
       URL.revokeObjectURL(url);
       
       // Remove file block from speech
-      cleanResponse = response.replace(/\[FILE:\s*([^\]]+)\]([\s\S]*?)\[\/FILE\]/i, '').trim();
+      cleanResponse = cleanResponse.replace(/\[FILE:\s*([^\]]+)\]([\s\S]*?)\[\/FILE\]/gi, '').trim();
+    }
+
+    // Check for morph tags: [FORM: morph_name]
+    const morphMatch = response.match(/\[FORM:\s*([^\]]+)\]/i);
+    if (morphMatch) {
+      const morphName = morphMatch[1].trim().toLowerCase();
+      // Valid morphs: blob, eye, hardware, ditto, spiky
+      const validMorphs = ['blob', 'eye', 'hardware', 'ditto', 'spiky'];
+      if (validMorphs.includes(morphName)) {
+        socketRef.current?.emit('command', `morph ${morphName}`);
+      }
+      
+      // Remove the form tag from the text
+      cleanResponse = cleanResponse.replace(/\[FORM:\s*([^\]]+)\]/gi, '').trim();
     }
     
     if (cleanResponse) {
