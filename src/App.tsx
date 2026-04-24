@@ -309,20 +309,6 @@ export default function App() {
             </button>
           </div>
 
-          {/* Generated Files List (The "Destination Folder") */}
-          {generatedFiles.length > 0 && (
-            <div className="mt-4 p-2 border border-[#00FF0033] bg-[#00FF000a] rounded text-[10px] font-mono">
-              <div className="text-[#00FF00] mb-1 uppercase tracking-widest opacity-50">/GLITCH/EXPORTS/</div>
-              <ul className="space-y-1">
-                {generatedFiles.map((f, i) => (
-                  <li key={i} className="flex justify-between items-center text-white/40">
-                    <span>{f.name}</span>
-                    <span className="text-[8px]">{f.time}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </div>
       </div>
 
