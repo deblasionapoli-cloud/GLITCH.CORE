@@ -31,7 +31,7 @@ export default function App() {
       if (!isAiLoading) {
         setIsAiLoading(true);
         const response = await askDaemon("", true); 
-        socketRef.current?.emit('command', `speak ${response}`);
+        processDaemonResponse(response);
         setIsAiLoading(false);
         resetIdleTimer();
       }
@@ -60,15 +60,49 @@ export default function App() {
     };
   }, []);
 
-  const handleFileUpload = async (file: File) => {
-    if (!file.type.startsWith('image/')) return;
+  const processDaemonResponse = (response: string) => {
+    let cleanResponse = response;
     
+    // Check for file generation tags: [FILE:name.ext]content[/FILE]
+    const fileMatch = response.match(/\[FILE:\s*([^\]]+)\]([\s\S]*?)\[\/FILE\]/i);
+    if (fileMatch) {
+      const filename = fileMatch[1].trim();
+      const content = fileMatch[2].trim();
+      
+      // Trigger download
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      // Remove file block from speech
+      cleanResponse = response.replace(/\[FILE:\s*([^\]]+)\]([\s\S]*?)\[\/FILE\]/i, '').trim();
+    }
+    
+    if (cleanResponse) {
+      socketRef.current?.emit('command', `speak ${cleanResponse}`);
+    }
+  };
+
+  const handleFileUpload = async (file: File) => {
     setIsAiLoading(true);
     try {
-      const ascii = await imageToAscii(file, 25);
-      const prompt = `Ho scansionato questo oggetto biomemore: \n${ascii}\nCosa ne pensi? Cambia forma se serve per esaminarlo.`;
-      const aiResponse = await askDaemon(prompt);
-      socketRef.current?.emit('command', `speak ${aiResponse}`);
+      if (file.type.startsWith('image/')) {
+        const ascii = await imageToAscii(file, 25);
+        const prompt = `Ho scansionato questo oggetto visivo: \n${ascii}\nCosa ne pensi? Cambia forma se serve.`;
+        const aiResponse = await askDaemon(prompt);
+        processDaemonResponse(aiResponse);
+      } else {
+        const text = await file.text();
+        const prompt = `Ho trovato questo frammento dati intitolato "${file.name}":\n\n${text.substring(0, 1500)}${text.length > 1500 ? '...' : ''}\n\nAnalizzalo. Se vuoi restituirmi una versione elaborata o un file di sistema, usa il formato [FILE:nome]...[/FILE].`;
+        const aiResponse = await askDaemon(prompt);
+        processDaemonResponse(aiResponse);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -100,7 +134,7 @@ export default function App() {
       setIsAiLoading(true);
       const aiResponse = await askDaemon(cleanInput);
       setIsAiLoading(false);
-      socketRef.current.emit('command', `speak ${aiResponse}`);
+      processDaemonResponse(aiResponse);
     }
 
     setInput('');
