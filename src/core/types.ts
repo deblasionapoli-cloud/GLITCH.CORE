@@ -4,7 +4,7 @@
  */
 
 export type EmotionState = 'calm' | 'alert' | 'attack' | 'glitch' | 'curious' | 'surprised';
-export type MorphType = 'blob' | 'spiky' | 'hardware' | 'eye' | 'pulse' | 'ditto';
+export type MorphType = 'blob' | 'spiky' | 'hardware' | 'eye' | 'pulse' | 'ditto' | 'custom';
 
 export interface Event {
   type: 'command' | 'intent';
@@ -34,6 +34,7 @@ export interface State {
   };
   context_memory: string[]; // Recent news patterns
   is_thinking: boolean; // Prevenzione chiamate multiple
+  custom_sprite?: string; // DNA visivo dinamico
 }
 
 export const INITIAL_STATE: State = {

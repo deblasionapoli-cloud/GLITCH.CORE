@@ -114,6 +114,8 @@ export function renderFrame(state: State): string {
       "    \\  /\\__/\\  /    ",
       "     \\/      \\/     "
     ];
+  } else if (current_morph === 'custom' && state.custom_sprite) {
+    spriteLines = state.custom_sprite.split('\n');
   } else {
     // Default Blob/Carhartt
     let brow = "  .___________________.  ";

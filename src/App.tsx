@@ -64,24 +64,26 @@ export default function App() {
     let cleanResponse = response;
     
     // Check for file generation tags: [FILE:name.ext]content[/FILE]
-    const fileMatch = response.match(/\[FILE:\s*([^\]]+)\]([\s\S]*?)\[\/FILE\]/i);
+    const fileMatch = response.match(/\[FILE:\s*([^\]\s]+)\]([\s\S]*?)(?:\[\/FILE\]|$)/i);
     if (fileMatch) {
       const filename = fileMatch[1].trim();
       const content = fileMatch[2].trim();
       
-      // Trigger download
-      const blob = new Blob([content], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      if (content.length > 0) {
+        // Trigger download
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
       
       // Remove file block from speech
-      cleanResponse = cleanResponse.replace(/\[FILE:\s*([^\]]+)\]([\s\S]*?)\[\/FILE\]/gi, '').trim();
+      cleanResponse = cleanResponse.replace(/\[FILE:\s*([^\]\s]+)\]([\s\S]*?)(?:\[\/FILE\]|$)/gi, '').trim();
     }
 
     // Check for morph tags: [FORM: morph_name]
@@ -94,12 +96,18 @@ export default function App() {
         socketRef.current?.emit('command', `morph ${morphName}`);
       }
       
-      // Remove the form tag from the text
-      cleanResponse = cleanResponse.replace(/\[FORM:\s*([^\]]+)\]/gi, '').trim();
+      // Remove the form tag from the text and clean up whitespace
+      cleanResponse = cleanResponse.replace(/\[FORM:\s*[^\]]+\]/gi, '').replace(/\s+/g, ' ').trim();
     }
+
+    // Check for custom ASCII: [ASCII]...[/ASCII]
+    const asciiMatch = response.match(/\[ASCII\]([\s\S]*?)\[\/ASCII\]/i);
+    // We don't strip it here yet, because the server's speak command needs to see it.
+    // However, for the local intent/speak flow, we might want to ensure the server gets the full payload.
     
-    if (cleanResponse) {
-      socketRef.current?.emit('command', `speak ${cleanResponse}`);
+    if (cleanResponse || asciiMatch) {
+      // Send the UNMODIFIED response to the server so it can handle all tags
+      socketRef.current?.emit('command', `speak ${response}`);
     }
   };
 

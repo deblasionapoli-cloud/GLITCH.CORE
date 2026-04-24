@@ -87,21 +87,8 @@ export function updateState(currentState: State, events: Event[]): State {
           }
           break;
         case 'speak':
-          const newSpeech = event.payload.substring(6).toUpperCase();
-          if (newSpeech !== nextState.last_speech) {
-            nextState.last_speech = newSpeech;
-            pushToQueue(nextState, newSpeech);
-            
-            const formMatch = event.payload.match(/\[FORM:\s*(\w+)\]/i);
-            if (formMatch) {
-              const target = formMatch[1].toLowerCase();
-              const validMorphs = ['blob', 'eye', 'hardware', 'spiky', 'pulse', 'ditto'];
-              if (validMorphs.includes(target)) {
-                nextState.morph_target = target as any;
-                nextState.emotion_state = 'glitch';
-              }
-            }
-          }
+          const rawSpeech = event.payload.substring(6);
+          processSpeechTags(nextState, rawSpeech);
           break;
       }
     } else {
@@ -228,6 +215,40 @@ function pushToQueue(state: State, text: string) {
   if (currentLine) state.speech_queue.push(`[ ${currentLine.trim().padEnd(maxWidth)} ]`);
 }
 
+function processSpeechTags(state: State, rawSpeech: string) {
+  // Parse Morph tags
+  const formMatch = rawSpeech.match(/\[FORM:\s*(\w+)\]/i);
+  if (formMatch) {
+    const target = formMatch[1].toLowerCase();
+    const validMorphs = ['blob', 'eye', 'hardware', 'spiky', 'pulse', 'ditto'];
+    if (validMorphs.includes(target)) {
+      state.morph_target = target as any;
+      state.emotion_state = 'glitch';
+    }
+  }
+
+  // Parse ASCII tags
+  const asciiMatch = rawSpeech.match(/\[ASCII\]([\s\S]*?)\[\/ASCII\]/i);
+  if (asciiMatch) {
+    state.custom_sprite = asciiMatch[1].trim();
+    state.morph_target = 'custom';
+    state.emotion_state = 'glitch';
+  }
+
+  // Clean the speech for display
+  const displaySpeech = rawSpeech
+    .replace(/\[FORM:\s*[^\]]+\]/gi, '')
+    .replace(/\[ASCII\][\s\S]*?\[\/ASCII\]/gi, '')
+    .replace(/\[FILE:\s*[^\]\s]+\]([\s\S]*?)(?:\[\/FILE\]|$)/gi, '')
+    .trim()
+    .toUpperCase();
+
+  if (displaySpeech && displaySpeech !== state.last_speech) {
+    state.last_speech = displaySpeech;
+    pushToQueue(state, displaySpeech);
+  }
+}
+
 async function handleAiResponse(state: State, input: string) {
   if (state.is_thinking) return;
   state.is_thinking = true;
@@ -236,8 +257,7 @@ async function handleAiResponse(state: State, input: string) {
       ? ` [HW_LOG: ${state.hardware_metrics.cpu_temp.toFixed(1)}C | RAM: ${state.hardware_metrics.ram_usage.toFixed(0)}%]`
       : "";
     const aiResponse = await askDaemon(input + hwInfo, false, state.hardware_metrics);
-    state.last_speech = aiResponse.toUpperCase();
-    pushToQueue(state, aiResponse.toUpperCase());
+    processSpeechTags(state, aiResponse);
   } catch (e) {
     console.error("AI Response fail", e);
   } finally {
@@ -250,8 +270,7 @@ async function handleInitiative(state: State) {
   state.is_thinking = true;
   try {
     const aiResponse = await askDaemon('', true, state.hardware_metrics);
-    state.last_speech = aiResponse.toUpperCase();
-    pushToQueue(state, aiResponse.toUpperCase());
+    processSpeechTags(state, aiResponse);
   } catch (e) {
      console.error("Initiative fail", e);
   } finally {
