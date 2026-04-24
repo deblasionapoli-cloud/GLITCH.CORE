@@ -231,26 +231,30 @@ export function renderFrame(state: State): string {
     }
   }
 
-  // 5. Final Composite with Background & Distortion
+  // 4. Composite: Foreground over Background
   const bgLines = rawLines.map((_, idx) => generateBGLine(animation_phase, idx));
   
+  // Calculate character bounding box for uniform centering
+  const maxLineLength = Math.max(...rawLines.map(l => l.length));
+  const globalPadding = Math.max(0, Math.floor((bgWidth - maxLineLength) / 2));
+
   const frame = rawLines.map((line, idx) => {
-    // Center the foreground line within the background width (40)
-    const padding = Math.max(0, Math.floor((bgWidth - line.trimEnd().length) / 2));
-    const centeredFG = " ".repeat(padding) + line.trim();
+    // Preserve relative internal spacing by using one global offset
+    const centeredFG = " ".repeat(globalPadding) + line;
 
     const bg = bgLines[idx] || "";
     
     // Merge foreground over background
     const merged = bg.split('').map((char, charIdx) => {
         const fgChar = centeredFG[charIdx];
-        if (fgChar && fgChar !== " " && fgChar !== undefined) return fgChar;
+        // Only prioritize FG if it's not a space
+        if (fgChar && fgChar !== " ") return fgChar;
         return char;
     }).join('');
 
     let finalLine = merged;
     
-    // Add horizontal scanline effect (RESTORED)
+    // Add horizontal scanline effect
     const scanlinePos = (animation_phase % 40);
     if (idx === scanlinePos || idx === scanlinePos - 1) {
         finalLine = finalLine.replace(/[^\s]/g, (c) => Math.random() > 0.5 ? "=" : "-");
@@ -258,7 +262,7 @@ export function renderFrame(state: State): string {
 
     if (isGlitched || iScale > 0.6) {
       if (Math.random() < (isGlitched ? 0.3 : 0.1)) {
-        const offset = Math.floor(Math.random() * 6) - 3;
+        const offset = Math.floor(Math.random() * 4) - 2;
         finalLine = offset > 0 ? " ".repeat(offset) + finalLine : finalLine.substring(Math.abs(offset));
       }
     }
