@@ -107,6 +107,15 @@ export function startSshServer(options: SshServerOptions) {
     });
   });
 
+  server.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`[SSH] Port ${port} is already in use. SSH server will not start.`);
+      // Non buttiamo giù il server vitale solo per SSH.
+    } else {
+      console.error('[SSH] Failed to start:', err);
+    }
+  });
+
   server.listen(port, '0.0.0.0', () => {
     console.log(`SSH: Daemon core listening on port ${port}`);
   });
