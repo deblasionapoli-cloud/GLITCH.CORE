@@ -47,7 +47,8 @@ export default function App() {
 
   const resetIdleTimer = () => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    const randomInterval = 120000 + Math.random() * 180000;
+    // Più frequente: tra 45 e 120 secondi di inattività
+    const randomInterval = 45000 + Math.random() * 75000;
     
     idleTimerRef.current = setTimeout(async () => {
       if (!isAiLoading) {
@@ -249,7 +250,7 @@ export default function App() {
       onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
       onDragLeave={() => setIsDragging(false)}
       onDrop={handleDrop}
-      className={`min-h-screen bg-[#050505] flex flex-col items-center justify-center p-4 font-mono selection:bg-[#00FF00] selection:text-black relative overflow-hidden transition-colors duration-500 ${isDragging ? 'ring-2 ring-[#00FF00] ring-inset' : ''}`}
+      className={`min-h-screen bg-[#050505] flex flex-col items-center justify-center p-0 md:p-2 font-mono selection:bg-[#00FF00] selection:text-black relative overflow-hidden transition-colors duration-500 ${isDragging ? 'ring-2 ring-[#00FF00] ring-inset' : ''}`}
     >
       {/* Subtle CRT Overlays */}
       <div className="fixed inset-0 pointer-events-none z-50 opacity-[0.03] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%]" />
@@ -275,10 +276,10 @@ export default function App() {
       </div>
 
       {/* Main Container */}
-      <div className="relative group flex flex-col items-center gap-4">
+      <div className="relative group flex flex-col items-center gap-2 w-full h-screen max-w-[1200px]">
         {/* Character Box */}
         <div 
-          className="relative group/box"
+          className="relative group/box flex-1 w-full flex items-center justify-center"
         >
           {/* Decorative Border Glow */}
           <div 
@@ -296,24 +297,23 @@ export default function App() {
           
           <div 
             ref={containerRef}
-            className={`relative flex flex-col items-center bg-black border border-white/5 rounded-sm px-4 py-8 backdrop-blur-sm shadow-2xl transition-all duration-300 overflow-hidden ${isFullscreen ? 'fixed inset-0 w-screen h-screen z-40' : 'w-[90vw] max-w-[1000px] min-h-[500px]'}`}
+            className={`relative flex flex-col items-center bg-transparent md:bg-black/50 border border-white/5 rounded-sm px-1 py-2 backdrop-blur-sm shadow-2xl transition-all duration-300 overflow-hidden ${isFullscreen ? 'fixed inset-0 w-screen h-screen z-40' : 'w-full h-full'}`}
           >
             {/* Fullscreen Toggle Button */}
             <button 
               onClick={toggleFullscreen}
-              className="absolute top-4 left-4 z-50 text-white/30 hover:text-white/80 transition-colors p-2"
+              className="absolute top-2 left-2 z-50 text-white/30 hover:text-white/80 transition-colors p-1"
               title="Toggle Protocol (Fullscreen)"
             >
-              {isFullscreen ? <Minimize2 size={24} /> : <Maximize2 size={18} />}
+              {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={14} />}
             </button>
 
             <pre 
-              className={`${themeClass} text-[1.4vw] lg:text-[14px] leading-[1.1] tracking-tight whitespace-pre flex flex-col items-center justify-center select-none transition-all duration-200 overflow-hidden font-mono w-full flex-1`}
-              style={{ fontSize: isFullscreen ? '1.8vh' : undefined }}
+              className={`${themeClass} text-[3.8vh] leading-[1.0] tracking-tighter whitespace-pre flex flex-col items-center justify-center select-none transition-all duration-200 overflow-hidden font-mono w-full flex-1`}
             >
               {frame.split('\n').map((line, i) => (
                 <div key={i} className="flex justify-center w-full">
-                  <span className="w-fit text-center">{line}</span>
+                  <span className="w-fit text-center block" style={{ transform: 'scale(1.2, 1.1)' }}>{line}</span>
                 </div>
               ))}
             </pre>
