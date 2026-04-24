@@ -35,6 +35,7 @@ export interface State {
   context_memory: string[]; // Recent news patterns
   is_thinking: boolean; // Prevenzione chiamate multiple
   custom_sprite?: string; // DNA visivo dinamico
+  aesthetic: string; // Gusto estetico dinamico
 }
 
 export const INITIAL_STATE: State = {
@@ -59,4 +60,5 @@ export const INITIAL_STATE: State = {
   },
   context_memory: [],
   is_thinking: false,
+  aesthetic: 'default',
 };

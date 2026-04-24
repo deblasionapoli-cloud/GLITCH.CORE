@@ -216,12 +216,26 @@ export default function App() {
   const isMaterialistInput = materialistKeywords.some(kw => input.toLowerCase().includes(kw));
   const isTupacInput = input.toLowerCase().includes('tupac');
 
+  // Aesthetic mapping
+  const getAestheticClass = () => {
+    const { aesthetic } = state;
+    if (aesthetic === 'brutalist') return "bg-white text-black font-bold uppercase";
+    if (aesthetic === 'neon') return "text-pink-500 drop-shadow-[0_0_12px_rgba(236,72,153,0.8)]";
+    if (aesthetic === 'matrix') return "text-green-400 font-mono";
+    if (aesthetic === 'overload') return "bg-[#00FF00] text-black font-black";
+    if (aesthetic === 'minimal') return "text-white/20 blur-[0.3px]";
+    if (aesthetic === 'bombing') return "bg-[rgba(255,100,0,0.1)] text-[#FF6400] font-bold border-2 border-[#FF6400]";
+    return "";
+  };
+
+  const aestheticClass = getAestheticClass();
+
   return (
     <div 
       onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
       onDragLeave={() => setIsDragging(false)}
       onDrop={handleDrop}
-      className={`min-h-screen bg-[#050505] flex flex-col items-center justify-center p-4 font-mono selection:bg-[#00FF00] selection:text-black relative overflow-hidden transition-colors duration-500 ${isDragging ? 'ring-2 ring-[#00FF00] ring-inset' : ''}`}
+      className={`min-h-screen bg-[#050505] flex flex-col items-center justify-center p-4 font-mono selection:bg-[#00FF00] selection:text-black relative overflow-hidden transition-colors duration-500 ${isDragging ? 'ring-2 ring-[#00FF00] ring-inset' : ''} ${aestheticClass}`}
     >
       {/* Subtle CRT Overlays */}
       <div className="fixed inset-0 pointer-events-none z-50 opacity-[0.03] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%]" />

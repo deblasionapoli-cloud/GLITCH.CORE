@@ -20,7 +20,20 @@ export function renderFrame(state: State): string {
   const bgWidth = 40;
   const generateBGLine = (phase: number, row: number) => {
     const seed = (phase + row * 17) % 100;
-    const chars = [" ", " ", " ", " ", ".", "·", "'", "`", " ", " "];
+    let chars = [" ", " ", " ", " ", ".", "·", "'", "`", " ", " "];
+    
+    if (state.aesthetic === 'overload') {
+        chars = ["@", "#", "8", "&", "G", "L", "I", "T", "C", "H"];
+    } else if (state.aesthetic === 'minimal') {
+        chars = [" ", " ", " ", " ", " ", " ", "·", " ", " ", " "];
+    } else if (state.aesthetic === 'brutalist') {
+        chars = ["█", "▓", "▒", "░", " ", " ", " ", " ", " ", " "];
+    } else if (state.aesthetic === 'matrix') {
+        chars = ["0", "1", " ", " ", " ", " ", " ", " ", " ", " "];
+    } else if (state.aesthetic === 'bombing') {
+        chars = ["#", "B", "O", "M", "B", "%", "X", "=", " ", " "];
+    }
+
     let line = "";
     for (let i = 0; i < bgWidth; i++) {
        const charIdx = (seed + i * 7) % chars.length;

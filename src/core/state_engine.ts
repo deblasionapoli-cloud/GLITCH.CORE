@@ -248,6 +248,12 @@ function processSpeechTags(state: State, rawSpeech: string) {
     }
   }
 
+  // Parse Aesthetic tags
+  const aestheticMatch = rawSpeech.match(/\[AESTHETIC:\s*([^\]]+)\]/i);
+  if (aestheticMatch) {
+    state.aesthetic = aestheticMatch[1].trim().toLowerCase();
+  }
+
   // Parse ASCII tags (robust to unclosed tags)
   const asciiMatch = rawSpeech.match(/\[ASCII\]([\s\S]*?)(?:\[\/ASCII\]|$)/i);
   if (asciiMatch && asciiMatch[1].trim()) {
@@ -259,6 +265,7 @@ function processSpeechTags(state: State, rawSpeech: string) {
   // Clean the speech for display (strip all tags before pushing to terminal queue)
   const displaySpeech = rawSpeech
     .replace(/\[FORM:\s*[^\]]+\]/gi, '')
+    .replace(/\[AESTHETIC:\s*[^\]]+\]/gi, '')
     .replace(/\[ASCII\]([\s\S]*?)(?:\[\/ASCII\]|$)/gi, '')
     .replace(/\[FILE:\s*[^\]\s]+\]([\s\S]*?)(?:\[\/FILE\]|$)/gi, '')
     .trim()
