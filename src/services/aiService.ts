@@ -8,6 +8,7 @@ import { getRecentMemories, saveMemory, getTraits } from "./memoryService";
 
 // DAEMON KERNEL CONFIGURATION
 const PROVIDER: 'CLOUD' | 'LOCAL' = 'LOCAL'; 
+const LOCAL_MODEL = process.env.LOCAL_MODEL || 'tinyllama'; // <--- CAMBIA QUI IL MODELLO LOCALE
 const LOCAL_GENERATE_URL = "http://localhost:11434/api/generate";
 const LOCAL_CHAT_URL = "http://localhost:11434/api/chat"; 
 
@@ -152,7 +153,7 @@ async function askLocalDaemon(prompt: string, isInitiative: boolean, systemPromp
     const response = await fetch(LOCAL_CHAT_URL, {
       method: "POST",
       body: JSON.stringify({
-        model: "tinyllama", 
+        model: LOCAL_MODEL, 
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: contents }
