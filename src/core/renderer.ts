@@ -58,55 +58,85 @@ export function renderFrame(state: State): string {
 
   // 4. Morph Logic
   let spriteLines: string[] = [];
+  const isSpeaking = state.last_command_phase >= 0 && (animation_phase - state.last_command_phase < 45);
 
   if (current_morph === 'eye') {
+    const iris = isBlinking ? "---" : (isProcessing ? "***" : (isSpeaking && animation_phase % 2 === 0 ? " O " : " o "));
     spriteLines = [
       "        .--------.        ",
       "     .-'          '-.     ",
       "    /   .--------.   \\    ",
       "   |   /          \\   |   ",
-      `   |  |   ${eyeC}   |  |   `,
+      `   |  |    [${iris}]   |  |   `,
       "   |   \\          /   |   ",
       "    \\   '--------'   /    ",
       "     '-.          .-'     ",
       "        '--------'        "
     ];
   } else if (current_morph === 'hardware') {
-    const p = (animation_phase % 10 < 5) ? "_" : " ";
+    const p = (animation_phase % 4 < 2) ? "_" : " ";
+    const load = isProcessing ? "||||||||||||||||" : (isSpeaking ? ">>> DATA TX >>>>" : ":: IDLE STATE ::");
+    const pins = (animation_phase % 2 === 0) ? "|| || || || || || ||" : " |  |  |  |  |  |  |";
     spriteLines = [
       "   ______________________   ",
       "  |                      |  ",
       `  | [${p}]  CPU CORE  [${p}] |  `,
-      "  |  [IIIIIIIIIIIIIIII]  |  ",
+      `  |  [${load}]  |  `,
       `  |   (${eyeL})  (${eyeR})   |  `,
       "  |  [________________]  |  ",
       "  |      ::::::::::      |  ",
       "  |__==__==__==__==__==__|  ",
-      "    || || || || || || ||    "
+      `    ${pins}    `
     ];
   } else if (current_morph === 'ditto') {
-    const w = Math.sin(animation_phase * 0.2) * 2;
+    const w = Math.sin(animation_phase * 0.3) * 3;
     const pad = (n: number) => " ".repeat(Math.max(0, Math.floor(n)));
+    const m = isBlinking ? "-" : (isSpeaking ? (animation_phase % 2 === 0 ? "o" : "O") : "_");
     spriteLines = [
       `${pad(4+w)}  .----------.  `,
-      `${pad(2+w*0.5)} /            \\ `,
+      `${pad(2+w*0.8)} /            \\ `,
       `${pad(w)}|   ${eyeL}   ${eyeR}   |`,
-      `${pad(1-w*0.5)} \\    ____    / `,
+      `${pad(1-w*0.5)} \\    _${m}__    / `,
       `${pad(2-w)}  '--'    '--'  `,
       `${pad(4-w*1.1)}   /      \\    `,
       `${pad(3-w*1.5)}  /________\\   `
     ];
   } else if (current_morph === 'spiky') {
+    const spike = isSpeaking 
+        ? (animation_phase % 3 === 0 ? "VVVVV" : " vvv ") 
+        : (isProcessing ? "wwwww" : "=====");
+    const crown = (animation_phase % 4 < 2) ? "     /\\      /\\     " : "    /  \\    /  \\    ";
     spriteLines = [
-      "     /\\      /\\     ",
+      crown,
       "    /  \\____/  \\    ",
       `   /  (${eyeL})(${eyeR})  \\   `,
-      "   \\    VVVVV    /   ",
+      `   \\    ${spike}    /   `,
       "    \\  /\\__/\\  /    ",
       "     \\/      \\/     "
     ];
   } else {
     // Default Blob/Carhartt
+    let brow = "  .___________________.  ";
+    if (emotion_state === 'alert' || emotion_state === 'attack') brow = "  .^^^^^^^^^^^^^^^^^^^.  ";
+    if (emotion_state === 'curious') brow = "  .____/________/_____.  ";
+    if (isCalmIdle && Math.random() > 0.6) brow = "  .^^^^^^^^^^^^^^^^^^^.  ";
+
+    let mouth = "|    {===========}    |";
+    if (isSpeaking) {
+      const osc = animation_phase % 4;
+      if (osc === 0) mouth = "|    {    (---)    }    |";
+      else if (osc === 1) mouth = "|    {     ---     }    |";
+      else if (osc === 2) mouth = "|    {      o      }    |";
+    } else if (emotion_state === 'attack') {
+      mouth = `|    {VVVVVVVVVVV}    |`;
+    } else if (emotion_state === 'surprised') {
+      mouth = "|    {    (   )    }    |";
+    }
+
+    let nose = "|          ^          |";
+    if (isProcessing && animation_phase % 2 === 0) nose = "|         (<*>)        |";
+    else if (emotion_state === 'attack') nose = "|         /V\\         |";
+
     spriteLines = [
       "      .-----------------.      ",
       "     /      _______      \\     ",
@@ -115,9 +145,10 @@ export function renderFrame(state: State): string {
       "    |      |_______|      |    ",
       "    |_____________________|    ",
       "    |=====================|    ",
+      brow,
       `    |    (${eyeL})   (${eyeR})    |`,
-      "    |          ^          |",
-      "    |    {===========}    |",
+      `    ${nose}`,
+      `    ${mouth}`,
       "    '___________________'  "
     ];
   }
