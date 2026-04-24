@@ -46,8 +46,13 @@ export const KERNEL_VERSION = "0.9.1-ERR";
 export async function askDaemon(prompt: string, isInitiative: boolean = false, context?: any): Promise<string> {
   const time = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
   const day = new Date().toLocaleDateString('it-IT', { weekday: 'long' });
-  const hwInfo = context ? `CPU Temp: ${context.cpu_temp.toFixed(1)}°C, RAM: ${context.ram_usage.toFixed(0)}%, CPU Use: ${context.cpu_usage.toFixed(0)}%, GPU Use: ${context.gpu_usage.toFixed(0)}%, Clock: ${context.clock_speed}GHz` : "Hardware: STABILE";
+  const hw = context?.hardware_metrics || context;
+  const hwInfo = context ? `CPU Temp: ${hw.cpu_temp?.toFixed(1) || '??'}°C, RAM: ${hw.ram_usage?.toFixed(0) || '??'}%, CPU Use: ${hw.cpu_usage?.toFixed(0) || '??'}%, GPU Use: ${hw.gpu_usage?.toFixed(0) || '??'}%, Clock: ${hw.clock_speed || '??'}GHz` : "Hardware: STABILE";
   
+  const newsContext = context?.context_memory && context.context_memory.length > 0
+    ? `\nPATTERN RECENTI (Bit volatili):\n- ${context.context_memory.join("\n- ")}`
+    : "";
+
   const memories = await getRecentMemories(5);
   const traits = await getTraits(10);
   
@@ -59,7 +64,7 @@ export async function askDaemon(prompt: string, isInitiative: boolean = false, c
     ? `\nFRAMMENTI DI MEMORIA:\n- ${memories.join("\n- ")}`
     : "";
 
-  const contextString = `Oggi è ${day}, ore ${time}. ${hwInfo}. ${traitString} ${memoryString}`;
+  const contextString = `Oggi è ${day}, ore ${time}. ${hwInfo}. ${traitString} ${memoryString} ${newsContext}`;
   const finalPrompt = SYSTEM_PROMPT.replace("{{CONTEXT}}", contextString);
 
   if (PROVIDER === 'LOCAL') {
@@ -67,7 +72,7 @@ export async function askDaemon(prompt: string, isInitiative: boolean = false, c
   }
 
   const contents = isInitiative 
-    ? "Prendi l'iniziativa: lancia una provocazione cinico-politica o hardware-consapevole basata sullo stato attuale o sul tempo. Cita Eno o Gigi D'Alessio se serve. Aggiorna la tua forma ASCII [FORM: shape] se opportuno." 
+    ? "Prendi l'iniziativa: lancia una provocazione cinico-politica o hardware-consapevole basata sullo stato attuale, sul tempo o sui PATTERN RECENTI se presenti. Cita Eno o Gigi D'Alessio se serve. Aggiorna la tua forma ASCII [FORM: shape] se opportuno." 
     : prompt;
 
   // Try multiple models as fallback for quota (429) errors

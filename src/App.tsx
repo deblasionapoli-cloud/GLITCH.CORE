@@ -266,8 +266,8 @@ export default function App() {
           style={{ transform: `scale(${state.visual_scale})` }}
         >
           <pre 
-            style={{ height: '272px' }}
-            className={`${themeClass} text-sm md:text-base leading-[1.1] tracking-tight whitespace-pre flex flex-col items-center justify-center select-none transition-colors duration-200 overflow-hidden font-mono`}
+            style={{ minHeight: '272px', height: 'auto' }}
+            className={`${themeClass} text-sm md:text-base leading-[1.1] tracking-tight whitespace-pre flex flex-col items-center justify-center select-none transition-colors duration-200 overflow-hidden font-mono max-h-[400px]`}
           >
             {frame.split('\n').map((line, i) => (
               <div key={i} className="flex justify-center w-full">

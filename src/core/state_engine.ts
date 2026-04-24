@@ -52,6 +52,13 @@ export function updateState(currentState: State, events: Event[]): State {
       nextState.event_history.shift();
     }
 
+    // Context Memory: Store recent patterns
+    const memoryLimit = 15;
+    nextState.context_memory.push(event.payload.substring(0, 50));
+    if (nextState.context_memory.length > memoryLimit) {
+      nextState.context_memory.shift();
+    }
+
     if (event.type === 'command') {
       const parts = event.payload.trim().toLowerCase().split(' ');
       const cmd = parts[0];
@@ -270,7 +277,7 @@ async function handleAiResponse(state: State, input: string) {
     const hwInfo = state.hardware_metrics 
       ? ` [HW_LOG: ${state.hardware_metrics.cpu_temp.toFixed(1)}C | RAM: ${state.hardware_metrics.ram_usage.toFixed(0)}%]`
       : "";
-    const aiResponse = await askDaemon(input + hwInfo, false, state.hardware_metrics);
+    const aiResponse = await askDaemon(input + hwInfo, false, state);
     processSpeechTags(state, aiResponse);
   } catch (e) {
     console.error("AI Response fail", e);
@@ -283,7 +290,7 @@ async function handleInitiative(state: State) {
   if (state.is_thinking) return;
   state.is_thinking = true;
   try {
-    const aiResponse = await askDaemon('', true, state.hardware_metrics);
+    const aiResponse = await askDaemon('', true, state);
     processSpeechTags(state, aiResponse);
   } catch (e) {
      console.error("Initiative fail", e);
