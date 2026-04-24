@@ -195,13 +195,13 @@ export function renderFrame(state: State): string {
   }
 
   // 5. Speech Rendering
-  let rawSpeechLines = state.speech_queue.slice(0, 3);
+  let rawSpeechLines = state.speech_queue.slice(0, 5);
   let speechLines: string[] = [];
   const revealSpeed = 2;
   const shiftInterval = 14;
 
   rawSpeechLines.forEach((line, idx) => {
-    const age = (animation_phase % shiftInterval) + (2 - idx) * shiftInterval;
+    const age = (animation_phase % shiftInterval) + (4 - idx) * shiftInterval;
     const revealThreshold = age * revealSpeed;
     let content = line.substring(2, line.length - 2); 
     const charList = content.split("");
@@ -216,12 +216,12 @@ export function renderFrame(state: State): string {
     speechLines.push(`[ ${processedChars.join("")} ]`);
   });
   
-  while (speechLines.length < 3) {
+  while (speechLines.length < 5) {
     speechLines.push(`[ ${"".padEnd(25)} ]`);
   }
 
   const signalLine = isProcessing ? "      [ SIGNAL_RX ]      " : "";
-  let rawLines = [...spriteLines, signalLine, ...speechLines].slice(0, 20); // Limit lines
+  let rawLines = [...spriteLines, signalLine, ...speechLines].slice(0, 22); // Limit lines to bgHeight
   
   // 4. Composite: Foreground over Background
   const bgLines = new Array(bgHeight).fill("").map((_, idx) => generateBGLine(animation_phase, idx));
@@ -229,9 +229,15 @@ export function renderFrame(state: State): string {
   // Calculate character bounding box for uniform centering
   const maxLineLength = Math.max(...rawLines.map(l => l.length));
   const globalPadding = Math.max(0, Math.floor((bgWidth - maxLineLength) / 2));
+  
+  // Calculate vertical offset for centering
+  const vOffset = Math.max(0, Math.floor((bgHeight - rawLines.length) / 2));
 
   const frame = bgLines.map((bg, idx) => {
-    const line = rawLines[idx] || "";
+    // Determine which line from rawLines corresponds to this background row based on vOffset
+    const rawIdx = idx - vOffset;
+    const line = (rawIdx >= 0 && rawIdx < rawLines.length) ? rawLines[rawIdx] : "";
+    
     // Preserve relative internal spacing by using one global offset
     const centeredFG = " ".repeat(globalPadding) + line;
 

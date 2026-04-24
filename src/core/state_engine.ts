@@ -19,7 +19,7 @@ export function updateState(currentState: State, events: Event[]): State {
   nextState.animation_phase = (nextState.animation_phase + 1) % 1000;
 
   // Initiative logic: every ~2 minutes (1200 ticks at 10Hz) to save quota
-  if (nextState.animation_phase % 1200 === 0 && !nextState.is_thinking && nextState.speech_queue.length <= 3) {
+  if (nextState.animation_phase % 1200 === 0 && !nextState.is_thinking && nextState.speech_queue.length <= 5) {
     handleInitiative(nextState);
   }
 
@@ -35,7 +35,7 @@ export function updateState(currentState: State, events: Event[]): State {
 
   // Step the speech queue every N ticks (scrolling speed)
   // Speed 14 is 1.4 seconds per line at 10Hz (optimized for reading)
-  if (nextState.animation_phase % 14 === 0 && nextState.speech_queue.length > 3) {
+  if (nextState.animation_phase % 14 === 0 && nextState.speech_queue.length > 5) {
     nextState.speech_queue.shift();
   }
 
@@ -211,9 +211,9 @@ function pushToQueue(state: State, text: string) {
   
   // Add separator (buffer consumption) if there's already content
   if (state.speech_queue.length > 0) {
-    state.speech_queue.push(`[ ${"".padEnd(maxWidth)} ]`);
-    state.speech_queue.push(`[ ${"".padEnd(maxWidth)} ]`);
-    state.speech_queue.push(`[ ${"".padEnd(maxWidth)} ]`);
+    for (let i = 0; i < 5; i++) {
+      state.speech_queue.push(`[ ${"".padEnd(maxWidth)} ]`);
+    }
   }
 
   words.forEach(word => {

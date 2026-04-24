@@ -10,6 +10,7 @@ import { renderFrame } from './core/renderer';
 import { askDaemon } from './services/aiService';
 import { auth, signIn, signOut } from './services/memoryService';
 import { onAuthStateChanged, User } from 'firebase/auth';
+import { Maximize2, Minimize2 } from 'lucide-react';
 
 import { imageToAscii } from './utils/imageUtils';
 
@@ -20,10 +21,28 @@ export default function App() {
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [generatedFiles, setGeneratedFiles] = useState<{name: string, time: string}[]>([]);
   const socketRef = useRef<Socket | null>(null);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
+  useEffect(() => {
+    const handleFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
 
   const resetIdleTimer = () => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
@@ -262,8 +281,18 @@ export default function App() {
         />
         
         <div 
-          className="relative flex flex-col items-center bg-black/40 border border-white/5 rounded-sm px-2 py-2 backdrop-blur-sm shadow-2xl transition-all duration-300 w-[480px] h-[272px] overflow-hidden"
+          ref={containerRef}
+          className={`relative flex flex-col items-center bg-black border border-white/5 rounded-sm px-2 py-2 backdrop-blur-sm shadow-2xl transition-all duration-300 overflow-hidden ${isFullscreen ? 'w-full h-full flex justify-center scale-110 lg:scale-150' : 'w-[480px] h-[272px]'}`}
         >
+          {/* Fullscreen Toggle Button */}
+          <button 
+            onClick={toggleFullscreen}
+            className="absolute top-2 right-2 z-50 text-white/10 hover:text-white/60 transition-colors p-1"
+            title="Toggle Protocol (Fullscreen)"
+          >
+            {isFullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+          </button>
+
           <pre 
             className={`${themeClass} text-[10px] leading-none tracking-tight whitespace-pre flex flex-col items-center justify-center select-none transition-colors duration-200 overflow-hidden font-mono w-full flex-1`}
           >
