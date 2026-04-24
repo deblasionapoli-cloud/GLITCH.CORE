@@ -3,8 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type EmotionState = 'calm' | 'alert' | 'attack' | 'glitch' | 'curious' | 'surprised';
-export type MorphType = 'blob' | 'spiky' | 'hardware' | 'eye' | 'pulse' | 'ditto' | 'custom';
+export type EmotionState = 'calm' | 'alert' | 'attack' | 'glitch' | 'curious' | 'surprised' | 'happy' | 'sad' | 'angry' | 'bored';
 
 export interface Event {
   type: 'command' | 'intent';
@@ -14,8 +13,6 @@ export interface Event {
 
 export interface State {
   emotion_state: EmotionState;
-  current_morph: MorphType;
-  morph_target: MorphType;
   intensity: number; // 0-100
   animation_phase: number;
   stream_mode: boolean;
@@ -38,8 +35,6 @@ export interface State {
 
 export const INITIAL_STATE: State = {
   emotion_state: 'calm',
-  current_morph: 'blob',
-  morph_target: 'blob',
   intensity: 0,
   animation_phase: 0,
   stream_mode: false,

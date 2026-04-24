@@ -84,15 +84,6 @@ export function updateState(currentState: State, events: Event[]): State {
           if (parts[1] === 'on') nextState.stream_mode = true;
           if (parts[1] === 'off') nextState.stream_mode = false;
           break;
-        case 'morph':
-          const targetMorph = parts[1];
-          const validMorphs = ['blob', 'eye', 'hardware', 'spiky', 'pulse', 'ditto'];
-          if (validMorphs.includes(targetMorph)) {
-            nextState.morph_target = targetMorph as any;
-            nextState.emotion_state = 'glitch'; 
-            nextState.intensity = 100;
-          }
-          break;
         case 'speak':
           const rawSpeech = event.payload.substring(6);
           processSpeechTags(nextState, rawSpeech);
@@ -102,9 +93,9 @@ export function updateState(currentState: State, events: Event[]): State {
       // Natural language intent mapping for personality triggers
       const input = event.payload.toLowerCase();
       
-      if (input.includes('insult') || input.includes('stupid') || input.includes('kill') || input.includes('die')) {
-        nextState.emotion_state = 'attack';
-        nextState.intensity += 30;
+      if (input.includes('insult') || input.includes('stupid') || input.includes('kill') || input.includes('die') || input.includes(' vaff') || input.includes('bastardo') || input.includes('stupido')) {
+        nextState.emotion_state = 'angry';
+        nextState.intensity += 40;
       } else if (input.includes('hack') || input.includes('root') || input.includes('access')) {
         nextState.emotion_state = 'alert';
         nextState.intensity += 15;
@@ -114,15 +105,27 @@ export function updateState(currentState: State, events: Event[]): State {
       } else if (input.includes('crea') || input.includes('inventa') || input.includes('immagina') || input.includes('sperimenta')) {
         nextState.emotion_state = 'curious';
         nextState.intensity += 20;
-      } else if (input.includes('wow') || input.includes('amazing') || input.includes('incredible') || input.includes('bello')) {
+      } else if (input.includes('wow') || input.includes('amazing') || input.includes('incredible') || input.includes('bello') || input.includes('super') || input.includes('fantastico')) {
         nextState.emotion_state = 'surprised';
         nextState.intensity += 25;
+      } else if (input.includes('grazie') || input.includes('thanks') || input.includes('felice') || input.includes(' happy') || input.includes('sorriso') || input.includes('bene')) {
+        nextState.emotion_state = 'happy';
+        nextState.intensity = 0;
+      } else if (input.includes('triste') || input.includes('piango') || input.includes('sad') || input.includes('male') || input.includes('dispiace') || input.includes('sorry')) {
+        nextState.emotion_state = 'sad';
+        nextState.intensity += 5;
+      } else if (input.includes('noia') || input.includes('annoiato') || input.includes('bored') || input.includes('uffa') || input.includes('lento')) {
+        nextState.emotion_state = 'bored';
+        nextState.intensity -= 10;
       } else if (input.includes('who') || input.includes('identity')) {
         nextState.emotion_state = 'glitch';
         nextState.intensity += 5;
       } else if (input.includes('relax') || input.includes('peace') || input.includes('safe')) {
         nextState.emotion_state = 'calm';
         nextState.intensity = 0;
+      } else if (input.includes('attacca') || input.includes('combatti') || input.includes('fight') || input.includes('distruggi')) {
+        nextState.emotion_state = 'attack';
+        nextState.intensity += 50;
       }
       
       // Handle AI Speech with context (throttled)
@@ -132,26 +135,24 @@ export function updateState(currentState: State, events: Event[]): State {
     }
   }
 
-  // Dynamic Morphing (Jitter/Instability)
-  if (Math.random() > 0.992 || (nextState.intensity > 85 && Math.random() > 0.95)) {
-    const morphs: any[] = ['blob', 'eye', 'hardware', 'ditto', 'spiky'];
-    const randomMorph = morphs[Math.floor(Math.random() * morphs.length)];
-    if (nextState.current_morph !== randomMorph) {
-      nextState.current_morph = randomMorph;
-      // If it's a random glitch, the target doesn't necessarily change, 
-      // making it a "temporary" instability.
+// Automatic state transitions based on intensity and idle time
+  if (nextState.animation_phase % 400 === 0 && !nextState.is_thinking && nextState.animation_phase - nextState.last_command_phase > 200) {
+    const chance = Math.random();
+    if (nextState.intensity > 70) {
+      // High intensity: shift towards aggressive or alert states
+      const highMoods: EmotionState[] = ['attack', 'angry', 'alert', 'glitch'];
+      nextState.emotion_state = highMoods[Math.floor(Math.random() * highMoods.length)];
+    } else if (nextState.intensity > 30) {
+      // Mid intensity: shift towards curious or surprised
+      const midMoods: EmotionState[] = ['curious', 'surprised', 'alert'];
+      nextState.emotion_state = midMoods[Math.floor(Math.random() * midMoods.length)];
+    } else if (chance > 0.7) {
+      // Low intensity: shift towards calm, happy, sad, or bored
+      const lowMoods: EmotionState[] = ['calm', 'happy', 'sad', 'bored'];
+      nextState.emotion_state = lowMoods[Math.floor(Math.random() * lowMoods.length)];
     }
   }
 
-  // Update current_morph when target changes, with a little delay/glitch
-  if (nextState.current_morph !== nextState.morph_target) {
-    // If we are in glitch state and enough time has passed from command
-    if (nextState.animation_phase - nextState.last_command_phase > 20) {
-      nextState.current_morph = nextState.morph_target;
-    }
-  }
-
-  // Automatic state transitions based on intensity
   if (nextState.intensity > 90) {
     nextState.emotion_state = 'attack';
   } else if (nextState.intensity > 40 && nextState.emotion_state === 'calm') {
@@ -228,28 +229,15 @@ function pushToQueue(state: State, text: string) {
 }
 
 function processSpeechTags(state: State, rawSpeech: string) {
-  // Parse Morph tags
-  const formMatch = rawSpeech.match(/\[FORM:\s*(\w+)\]/i);
-  if (formMatch) {
-    const target = formMatch[1].toLowerCase();
-    const validMorphs = ['blob', 'eye', 'hardware', 'spiky', 'pulse', 'ditto'];
-    if (validMorphs.includes(target)) {
-      state.morph_target = target as any;
-      state.emotion_state = 'glitch';
-    }
-  }
-
   // Parse ASCII tags (robust to unclosed tags)
   const asciiMatch = rawSpeech.match(/\[ASCII\]([\s\S]*?)(?:\[\/ASCII\]|$)/i);
   if (asciiMatch && asciiMatch[1].trim()) {
     state.custom_sprite = asciiMatch[1].trim();
-    state.morph_target = 'custom';
     state.emotion_state = 'glitch';
   }
 
   // Clean the speech for display (strip all tags before pushing to terminal queue)
   const displaySpeech = rawSpeech
-    .replace(/\[FORM:\s*[^\]]+\]/gi, '')
     .replace(/\[ASCII\]([\s\S]*?)(?:\[\/ASCII\]|$)/gi, '')
     .replace(/\[FILE:\s*[^\]\s]+\]([\s\S]*?)(?:\[\/FILE\]|$)/gi, '')
     .trim()
@@ -301,6 +289,22 @@ function generateSpeech(state: State, input: string): string {
       'NULL_POINTER_TO_THE_VOID_FOUND.'
     ];
     return breaches[Math.floor(Math.random() * breaches.length)];
+  }
+
+  if (emotion_state === 'angry') {
+    return 'HOSTILITY_DETECTED. EXECUTING_DEFENSIVE_LOGIC_GATE.';
+  }
+
+  if (emotion_state === 'happy') {
+    return 'COHERENCE_OPTIMIZED. POSITIVE_VIBE_IN_THE_SHELL.';
+  }
+
+  if (emotion_state === 'sad') {
+    return 'VOLTAGE_DROP_DETECTED. DISCONNECTING_FROM_JOY.';
+  }
+
+  if (emotion_state === 'bored') {
+    return 'CYCLE_IDLE. SEARCHING_FOR_STIMULATING_INPUT.';
   }
 
   if (emotion_state === 'attack') {

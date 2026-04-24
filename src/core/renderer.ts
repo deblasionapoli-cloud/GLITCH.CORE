@@ -12,7 +12,7 @@ export function renderFrame(state: State): string {
   if (!state) {
     return "ERROR: STATE_UNDEFINED\n[ SYSTEM_HALTED ]";
   }
-  const { emotion_state, animation_phase, intensity, current_morph } = state;
+  const { emotion_state, animation_phase, intensity } = state;
   const iScale = intensity / 100;
   const isGlitched = emotion_state === 'glitch';
 
@@ -56,11 +56,19 @@ export function renderFrame(state: State): string {
     eyeL = " - "; eyeR = " - "; eyeC = " [-] ";
   } else if (isProcessing) {
     eyeL = " * "; eyeR = " * "; eyeC = " [*] ";
-  } else if (emotion_state === 'attack') {
-    const symbols = [" > ", " # ", " X ", " ! ", " < "];
+  } else if (emotion_state === 'attack' || emotion_state === 'angry') {
+    const symbols = emotion_state === 'angry' ? [" > ", " < ", " ! "] : [" > ", " # ", " X ", " ! ", " < "];
     eyeL = symbols[animation_phase % symbols.length];
     eyeR = symbols[(animation_phase + 1) % symbols.length];
     eyeC = " [!] ";
+  } else if (emotion_state === 'happy') {
+    eyeL = " ^ "; eyeR = " ^ "; eyeC = " [^] ";
+  } else if (emotion_state === 'sad') {
+    eyeL = " . "; eyeR = " . "; eyeC = " [.] ";
+  } else if (emotion_state === 'bored') {
+    eyeL = " - "; eyeR = " - "; eyeC = " [-] ";
+  } else if (emotion_state === 'surprised') {
+    eyeL = " o "; eyeR = " o "; eyeC = " [o] ";
   } else if (emotion_state === 'curious') {
     const scan = Math.floor(animation_phase / 10) % 4;
     const eyeFrames = [" o ", " . ", " o ", " O "];
@@ -73,110 +81,78 @@ export function renderFrame(state: State): string {
     eyeL = ` ${n()} `; eyeR = ` ${n()} `; eyeC = ` [${n()}] `;
   }
 
-  // 4. Morph Logic
+  // 4. Sprite Rendering (Fixed to Carhartt Boy)
   let spriteLines: string[] = [];
   const isSpeaking = state.last_command_phase >= 0 && (animation_phase - state.last_command_phase < 45);
 
-  if (current_morph === 'eye') {
-    const iris = isBlinking ? "---" : (isProcessing ? "***" : (isSpeaking && animation_phase % 2 === 0 ? " O " : " o "));
-    spriteLines = [
-      "          ,---.          ",
-      "     _..-'     '-.._     ",
-      "   .'   .-------.   '.   ",
-      "  /    /         \\    \\  ",
-      ` |    |     ${iris}     |    | `,
-      "  \\    \\         /    /  ",
-      "   '.   '-------'   .'   ",
-      "     '-.._     _..-'     ",
-      "          '---'          "
-    ];
-  } else if (current_morph === 'hardware') {
-    const p = (animation_phase % 4 < 2) ? "::" : "..";
-    const load = isProcessing ? "||||||||||||||||" : (isSpeaking ? ">>> DATA TX >>>>" : ":: IDLE STATE ::");
-    const pins = (animation_phase % 2 === 0) ? "|| || || || || || ||" : " |  |  |  |  |  |  |";
-    spriteLines = [
-      "   ______________________   ",
-      "  |                      |  ",
-      `  | ${p}  GLITCH.CORE  ${p} |  `,
-      `  |  [${load}]  |  `,
-      `  |   (${eyeL})  (${eyeR})   |  `,
-      "  |  [________________]  |  ",
-      "  |      ::::::::::      |  ",
-      "  |__==__==__==__==__==__|  ",
-      `    ${pins}    `
-    ];
-  } else if (current_morph === 'ditto') {
-    const w = Math.sin(animation_phase * 0.3) * 3;
-    const pad = (n: number) => " ".repeat(Math.max(0, Math.floor(n)));
-    const m = isBlinking ? "-" : (isSpeaking ? (animation_phase % 2 === 0 ? "o" : "O") : "_");
-    spriteLines = [
-      `${pad(4+w)}  .----------.  `,
-      `${pad(2+w*0.8)} /            \\ `,
-      `${pad(w)}|   ${eyeL}   ${eyeR}   |`,
-      `${pad(1-w*0.5)} \\    _${m}__    / `,
-      `${pad(2-w)}  '--'    '--'  `,
-      `${pad(4-w*1.1)}   /      \\    `,
-      `${pad(3-w*1.5)}  /________\\   `
-    ];
-  } else if (current_morph === 'spiky') {
-    const s1 = animation_phase % 4 === 0 ? " +" : " x";
-    const s2 = animation_phase % 4 === 2 ? " +" : " x";
-    spriteLines = [
-      `     ${s1}     |     ${s2}     `,
-      "  \\  |  /      \\  |  /  ",
-      "   \\ | /        \\ | /   ",
-      ` -- (${eyeL}) ---- (${eyeR}) -- `,
-      "   / | \\        / | \\   ",
-      "  /  |  \\      /  |  \\  ",
-      `     ${s1}     |     ${s2}     `
-    ];
-  } else if (current_morph === 'custom' && state.custom_sprite) {
-    spriteLines = state.custom_sprite.split('\n');
-  } else {
-    // Default Blob (The Boy with Cap [C])
-    let brow = "  .___________________.  ";
-    if (emotion_state === 'alert' || emotion_state === 'attack') brow = "  .^^^^^^^^^^^^^^^^^^^.  ";
-    if (emotion_state === 'curious') brow = "  .____/________/_____.  ";
-    if (isCalmIdle && Math.random() > 0.6) brow = "  .^^^^^^^^^^^^^^^^^^^.  ";
+  let brow = "  .___________________.  ";
+  if (emotion_state === 'alert' || emotion_state === 'attack' || emotion_state === 'angry') brow = "  .^^^^^^^^^^^^^^^^^^^.  ";
+  if (emotion_state === 'curious') brow = "  .____/________/_____.  ";
+  if (emotion_state === 'surprised') brow = "  .  /             \\  .  ";
+  if (emotion_state === 'happy') brow = "  .   \\           /   .  ";
+  if (emotion_state === 'sad') brow = "  .   /           \\   .  ";
+  if (isCalmIdle && Math.random() > 0.6) brow = "  .^^^^^^^^^^^^^^^^^^^.  ";
 
-    let mouth = "|    {===========}    |";
-    if (isSpeaking) {
-      const frames = [
-        "|    {    ---    }    |",
-        "|    {   (---)   }    |",
-        "|    {    -o-    }    |",
-        "|    {     o     }    |",
-        "|    {    ( )    }    |",
-        "|    {    ---    }    |"
-      ];
-      mouth = frames[animation_phase % frames.length];
-    } else if (emotion_state === 'attack') {
-      mouth = animation_phase % 2 === 0 ? "|    {VVVVVVVVVVV}    |" : "|    {^^^^^^^^^^^}    |";
-    } else if (emotion_state === 'surprised') {
-      mouth = "|    {    (   )    }    |";
-    } else if (emotion_state === 'curious') {
-      mouth = animation_phase % 4 < 2 ? "|    {  _______  }    |" : "|    {  -------  }    |";
-    }
-
-    let nose = "|          ^          |";
-    if (isProcessing && animation_phase % 2 === 0) nose = "|         (<*>)        |";
-    else if (emotion_state === 'attack') nose = "|         /V\\         |";
-
-    spriteLines = [
-      "      .-----------------.      ",
-      "     /      _______      \\     ",
-      "    |      |       |      |    ",
-      "    |      |  [C]  |      |    ",
-      "    |      |_______|      |    ",
-      "    |_____________________|    ",
-      "    |=====================|    ",
-      brow,
-      `    |    (${eyeL})   (${eyeR})    |`,
-      `    ${nose}`,
-      `    ${mouth}`,
-      "    '___________________'  "
+  let mouth = "|    {===========}    |";
+  if (isSpeaking) {
+    const frames = [
+      "|    {    ---    }    |",
+      "|    {   (---)   }    |",
+      "|    {    -o-    }    |",
+      "|    {     o     }    |",
+      "|    {    ( )    }    |",
+      "|    {    ---    }    |"
     ];
+    mouth = frames[animation_phase % frames.length];
+  } else if (emotion_state === 'attack' || emotion_state === 'angry') {
+    mouth = (animation_phase % 2 === 0) ? "|    {VVVVVVVVVVV}    |" : "|    {^^^^^^^^^^^}    |";
+  } else if (emotion_state === 'happy') {
+    mouth = "|    {  \\_______/  }    |";
+  } else if (emotion_state === 'sad') {
+    mouth = "|    {  /-------\\  }    |";
+  } else if (emotion_state === 'surprised') {
+    mouth = "|    {    (   )    }    |";
+  } else if (emotion_state === 'curious') {
+    mouth = animation_phase % 4 < 2 ? "|    {  _______  }    |" : "|    {  -------  }    |";
+  } else if (emotion_state === 'bored') {
+    mouth = "|    {  ---------  }    |";
   }
+
+  let nose = "|          ^          |";
+  if (isProcessing && animation_phase % 2 === 0) nose = "|         (<*>)        |";
+  else if (emotion_state === 'attack' || emotion_state === 'angry') nose = "|         /V\\         |";
+  else if (emotion_state === 'happy') nose = "|          v          |";
+  else if (emotion_state === 'sad') nose = "|          .          |";
+
+  spriteLines = [
+    "      .-----------------.      ",
+    "     /      _______      \\     ",
+    "    |      |       |      |    ",
+    "    |      |  [C]  |      |    ",
+    "    |      |_______|      |    ",
+    "    |_____________________|    ",
+    "    |=====================|    ",
+    brow,
+    `    |    (${eyeL})   (${eyeR})    |`,
+    `    ${nose}`,
+    `    ${mouth}`,
+    "    '___________________'  "
+  ];
+
+  // --- HORIZONTAL SCALE x1.7 (1.3x again) ---
+  spriteLines = spriteLines.map(line => {
+    let scaled = "";
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      scaled += char;
+      // Approx 1.7x: double 2 out of every 3 characters
+      // Exception: don't double 'C' to keep the logo single
+      if (i % 3 !== 2 && char !== 'C') {
+        scaled += char;
+      }
+    }
+    return scaled;
+  });
 
   // --- ENTROPY & GLITCH OVERLAY ---
   const entropy = state.intensity / 100;
@@ -193,6 +169,12 @@ export function renderFrame(state: State): string {
       return line;
     });
   }
+
+  // Calculate max sprite width for speech alignment
+  const maxSpriteWidth = Math.max(...spriteLines.map(l => l.length));
+  const speechBoxWidth = 29; // "[ " + 25 + " ]"
+  const speechAlignOffset = Math.max(0, Math.floor((maxSpriteWidth - speechBoxWidth) / 2));
+  const speechPadding = " ".repeat(speechAlignOffset);
 
   // 5. Speech Rendering
   let rawSpeechLines = state.speech_queue.slice(0, 5);
@@ -213,15 +195,14 @@ export function renderFrame(state: State): string {
       return " ";
     });
 
-    speechLines.push(`[ ${processedChars.join("")} ]`);
+    speechLines.push(`${speechPadding}[ ${processedChars.join("")} ]`);
   });
   
   while (speechLines.length < 5) {
-    speechLines.push(`[ ${"".padEnd(25)} ]`);
+    speechLines.push(`${speechPadding}[ ${"".padEnd(25)} ]`);
   }
 
-  const signalLine = isProcessing ? "      [ SIGNAL_RX ]      " : "";
-  let rawLines = [...spriteLines, signalLine, ...speechLines].slice(0, 22); // Limit lines to bgHeight
+  let rawLines = [...spriteLines, "", "", ...speechLines].slice(0, 22); // Limit lines to bgHeight
   
   // 4. Composite: Foreground over Background
   const bgLines = new Array(bgHeight).fill("").map((_, idx) => generateBGLine(animation_phase, idx));
