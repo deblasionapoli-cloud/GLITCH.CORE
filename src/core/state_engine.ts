@@ -18,8 +18,8 @@ export function updateState(currentState: State, events: Event[]): State {
   // Update animation phase (deterministic loop)
   nextState.animation_phase = (nextState.animation_phase + 1) % 1000;
 
-  // Initiative logic: every ~45 seconds (450 ticks at 10Hz) to save quota
-  if (nextState.animation_phase % 450 === 0 && !nextState.is_thinking && nextState.speech_queue.length <= 3) {
+  // Initiative logic: every ~2 minutes (1200 ticks at 10Hz) to save quota
+  if (nextState.animation_phase % 1200 === 0 && !nextState.is_thinking && nextState.speech_queue.length <= 3) {
     handleInitiative(nextState);
   }
 
@@ -140,6 +140,8 @@ function updateHardwareDynamics(state: State) {
   const jitter = Math.sin(state.animation_phase * 0.1);
   state.hardware_metrics.cpu_temp = 40 + (state.intensity / 4) + jitter;
   state.hardware_metrics.ram_usage = 10 + (state.intensity / 2) + (Math.random() * 5);
+  state.hardware_metrics.cpu_usage = 5 + (state.intensity / 1.5) + (Math.random() * 10);
+  state.hardware_metrics.gpu_usage = 2 + (state.intensity / 3) + (Math.random() * 5);
   
   // Throttle clock speed if "overheated"
   if (state.hardware_metrics.cpu_temp > 65) {

@@ -5,6 +5,7 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { updateState } from './src/core/state_engine';
 import { INITIAL_STATE, State } from './src/core/types';
+import { startSshServer } from './src/services/ssh_service';
 
 async function startServer() {
   const app = express();
@@ -20,6 +21,23 @@ async function startServer() {
   // Daemon Global State
   let globalState: State = { ...INITIAL_STATE };
   
+  // Start SSH Server (Internal daemon access)
+  const SSH_PORT = 2222;
+  startSshServer({
+    port: SSH_PORT,
+    onCommand: (payload: string) => {
+      console.log(`Received command from SSH: ${payload}`);
+      const event = {
+        type: 'command' as const,
+        payload,
+        timestamp: Date.now()
+      };
+      globalState = updateState(globalState, [event]);
+      io.emit('state_update', globalState);
+    },
+    getGlobalState: () => globalState
+  });
+
   // Tick logic on server (Daemon heartbeat)
   setInterval(() => {
     globalState = updateState(globalState, []); // Just tick animation

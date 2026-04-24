@@ -26,6 +26,8 @@ export interface State {
     cpu_temp: number;
     ram_usage: number;
     clock_speed: number;
+    cpu_usage: number;
+    gpu_usage: number;
   };
   context_memory: string[]; // Recent news patterns
   is_thinking: boolean; // Prevenzione chiamate multiple
@@ -45,7 +47,9 @@ export const INITIAL_STATE: State = {
   hardware_metrics: {
     cpu_temp: 42,
     ram_usage: 12,
-    clock_speed: 1.5
+    clock_speed: 1.5,
+    cpu_usage: 5,
+    gpu_usage: 2
   },
   context_memory: [],
   is_thinking: false,

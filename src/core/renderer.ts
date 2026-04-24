@@ -68,8 +68,17 @@ export function renderFrame(state: State): string {
     eyeR = eyePos === 1 ? " o " : " O ";
   }
 
-  // 4. Base Components
-  let header = isProcessing ? "      [ SIGNAL_RX ]      " : "                         ";
+  // 4. Base Components (Full Carhartt Winter Hat)
+  const hatLines = [
+    "      .-----------------.      ",
+    "     /      _______      \\     ",
+    "    |      |       |      |    ",
+    "    |      |  [C]  |      |    ",
+    "    |      |_______|      |    ",
+    "    |_____________________|    ",
+    "    |=====================|    "
+  ];
+
   let brow = "  .___________________.  ";
   let eyesLine = `|    (${eyeL})   (${eyeR})    |`;
   let middle = "|          ^          |";
@@ -187,7 +196,8 @@ export function renderFrame(state: State): string {
     speechLines.push(`[ ${"".padEnd(25)} ]`);
   }
 
-  let rawLines = [header.trim() ? header : "", brow, eyesLine, middle, mouth, chin, "", ...speechLines, ""];
+  const signalLine = isProcessing ? "      [ SIGNAL_RX ]      " : "";
+  let rawLines = [...hatLines, brow, eyesLine, middle, mouth, chin, signalLine, ...speechLines, ""];
   
   // Apply Vertical Tearing (Line Level)
   if (isGlitched || iScale > 0.8) {

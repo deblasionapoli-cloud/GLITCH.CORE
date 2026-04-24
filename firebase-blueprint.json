@@ -1,0 +1,35 @@
+{
+  "entities": {
+    "JournalEntry": {
+      "title": "Journal Entry",
+      "description": "A single piece of remembered information or interaction context.",
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string",
+          "description": "The textual content of the memory."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the memory was created."
+        },
+        "category": {
+          "type": "string",
+          "description": "The type of memory (e.g., 'fact', 'preference', 'emotion')."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user this memory belongs to."
+        }
+      },
+      "required": ["content", "timestamp", "userId"]
+    }
+  },
+  "firestore": {
+    "/memories/{memoryId}": {
+      "schema": "JournalEntry",
+      "description": "A collection of long-term memories for the Daemon."
+    }
+  }
+}

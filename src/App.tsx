@@ -8,19 +8,22 @@ import { io, Socket } from 'socket.io-client';
 import { State, INITIAL_STATE } from './core/types';
 import { renderFrame } from './core/renderer';
 import { askDaemon } from './services/aiService';
+import { auth, signIn, signOut } from './services/memoryService';
+import { onAuthStateChanged, User } from 'firebase/auth';
 
 export default function App() {
   const [frame, setFrame] = useState('');
   const [state, setState] = useState<State>(INITIAL_STATE);
   const [input, setInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const resetIdleTimer = () => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    // Add jitter to the timer (between 40 and 90 seconds)
-    const randomInterval = 40000 + Math.random() * 50000;
+    // Add jitter to the timer (between 2 and 5 minutes)
+    const randomInterval = 120000 + Math.random() * 180000;
     
     idleTimerRef.current = setTimeout(async () => {
       if (!isAiLoading) {
@@ -34,6 +37,10 @@ export default function App() {
   };
 
   useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+    });
+
     // Connect to the same host
     const socket = io();
     socketRef.current = socket;
@@ -46,6 +53,7 @@ export default function App() {
     resetIdleTimer();
 
     return () => {
+      unsub();
       socket.disconnect();
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     };
@@ -119,6 +127,25 @@ export default function App() {
       {/* Subtle CRT Overlays */}
       <div className="fixed inset-0 pointer-events-none z-50 opacity-[0.03] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%]" />
       <div className="fixed inset-0 pointer-events-none z-40 bg-[radial-gradient(circle_at_50%_50%,rgba(0,255,0,0.02)_0%,transparent_80%)]" />
+
+      {/* Auth UI */}
+      <div className="fixed top-4 right-4 z-[60] flex items-center gap-4">
+        {user ? (
+          <button 
+            onClick={signOut}
+            className="text-[8px] uppercase tracking-widest text-white/30 hover:text-[#00FF00] transition-colors border border-white/10 px-2 py-1 rounded-sm"
+          >
+            LOGOUT_IDENTITY_{user.displayName?.split(' ')[0]}
+          </button>
+        ) : (
+          <button 
+            onClick={signIn}
+            className="text-[8px] uppercase tracking-widest text-[#00FF00]/40 hover:text-[#00FF00] transition-colors border border-[#00FF00]/20 px-2 py-1 rounded-sm animate-pulse"
+          >
+            RESTORE_IDENTITY_LINK
+          </button>
+        )}
+      </div>
 
       {/* Main Container */}
       <div className="relative group">

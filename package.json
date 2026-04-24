@@ -12,10 +12,13 @@
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
+    "@google/generative-ai": "^0.24.1",
     "@tailwindcss/vite": "^4.1.14",
+    "@types/ssh2": "^1.15.5",
     "@vitejs/plugin-react": "^5.0.4",
     "dotenv": "^17.2.3",
     "express": "^4.22.1",
+    "firebase": "^12.12.1",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "react": "^19.0.0",
