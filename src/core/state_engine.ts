@@ -248,6 +248,7 @@ function processSpeechTags(state: State, rawSpeech: string) {
 
   if (displaySpeech && displaySpeech !== state.last_speech) {
     state.last_speech = displaySpeech;
+    state.full_speech = displaySpeech;
     pushToQueue(state, displaySpeech);
   }
 }

@@ -204,75 +204,90 @@ export function renderFrame(state: State): string {
   const speechAlignOffset = Math.max(0, Math.floor((maxSpriteWidth - speechBoxWidth) / 2));
   const speechPadding = " ".repeat(speechAlignOffset);
 
-  // 5. Speech Rendering
-  let rawSpeechLines = state.speech_queue.slice(0, 5);
-  let speechLines: string[] = [];
-  const revealSpeed = 2;
-  const shiftInterval = 14;
-
-  rawSpeechLines.forEach((line, idx) => {
-    const age = (animation_phase % shiftInterval) + (4 - idx) * shiftInterval;
-    const revealThreshold = age * revealSpeed;
-    let content = line.substring(2, line.length - 2); 
-    const charList = content.split("");
-    const noise = ["!", "@", "#", "$", "%", "*"];
-
-    const processedChars = charList.map((char, i) => {
-      if (i < revealThreshold - 2) return char;
-      if (i < revealThreshold) return noise[Math.floor(Math.random() * noise.length)];
-      return " ";
-    });
-
-    speechLines.push(`${speechPadding}[ ${processedChars.join("")} ]`);
-  });
+  // 5. HUD Dynamic Text Rendering: Typewriter & Buffer Distortion
+  const displayedSpeech = state.full_speech || "";
+  const speechLength = displayedSpeech.length;
   
-  while (speechLines.length < 5) {
-    speechLines.push(`${speechPadding}[ ${"".padEnd(25)} ]`);
+  // Calculate visibility based on phase since last command
+  const charSpeed = 1.5 + (state.intensity / 50);
+  const visibleCharsThreshold = Math.floor((animation_phase - state.last_command_phase) * charSpeed);
+  
+  let processedSpeech = displayedSpeech.substring(0, Math.max(0, visibleCharsThreshold));
+  
+  // Add a glitch character at the end of the reveal
+  if (visibleCharsThreshold > 0 && visibleCharsThreshold < speechLength) {
+    const glitches = ["_", "█", "▒", "░", "/", "\\", "¶", "§", "∆", "√"];
+    processedSpeech += glitches[Math.floor(Math.random() * glitches.length)];
   }
 
-  let rawLines = [...spriteLines, "", "", ...speechLines].slice(0, 22); // Limit lines to bgHeight
+  // Wrap speech into multiple lines for the HUD (max 3 lines)
+  const wrapWidth = 50;
+  const rawSpeechLines_HUD: string[] = [];
+  for (let i = 0; i < processedSpeech.length && rawSpeechLines_HUD.length < 3; i += wrapWidth) {
+    rawSpeechLines_HUD.push(processedSpeech.substring(i, i + wrapWidth));
+  }
+  
+  const hudLines = rawSpeechLines_HUD.map((line, i) => {
+    // Slight jitter to the line position if intensity is high
+    const jitter = (intensity > 50 && Math.random() > 0.95) ? " " : "";
+    return `> ${jitter}${line.padEnd(wrapWidth)}`;
+  });
+
+  while (hudLines.length < 3) hudLines.push(" ".repeat(wrapWidth + 2));
+
+  // Current sliding queue (smaller, to the side or above)
+  const miniQueue = state.speech_queue.slice(0, 3).map(l => l.substring(0, 29));
   
   // 4. Composite: Foreground over Background
   const bgLines = new Array(bgHeight).fill("").map((_, idx) => generateBGLine(animation_phase, idx));
   
-  // Calculate character bounding box for uniform centering
-  const maxLineLength = Math.max(...rawLines.map(l => l.length));
-  const globalPadding = Math.max(0, Math.floor((bgWidth - maxLineLength) / 2));
-  
-  // Calculate vertical offset for centering, including breathing/floating shift
-  const vOffset = Math.max(0, Math.floor((bgHeight - rawLines.length) / 2) + totalYShift);
+  // Character sprite layout
+  const maxLineLength = Math.max(...spriteLines.map(l => l.length));
+  const charHOffset = Math.max(0, Math.floor((bgWidth - maxLineLength) / 2));
+  const charVOffset = Math.max(0, Math.floor((bgHeight - spriteLines.length) / 2) + totalYShift - 2);
 
   const frame = bgLines.map((bg, idx) => {
-    // Determine which line from rawLines corresponds to this background row based on vOffset
-    const rawIdx = idx - vOffset;
-    const line = (rawIdx >= 0 && rawIdx < rawLines.length) ? rawLines[rawIdx] : "";
-    
-    // Preserve relative internal spacing by using one global offset
-    const centeredFG = " ".repeat(globalPadding) + line;
+    // 1. Overlay Character Sprite
+    const spriteIdx = idx - charVOffset;
+    let currentLine = bg;
 
-    // Merge foreground over background
-    const merged = bg.split('').map((char, charIdx) => {
-        const fgChar = centeredFG[charIdx];
-        // Only prioritize FG if it's not a space
-        if (fgChar && fgChar !== " ") return fgChar;
-        return char;
-    }).join('');
+    if (spriteIdx >= 0 && spriteIdx < spriteLines.length) {
+        const spriteLine = spriteLines[spriteIdx];
+        const leftPart = currentLine.substring(0, charHOffset);
+        const rightPart = currentLine.substring(charHOffset + spriteLine.length);
+        
+        // Merge sprite characters
+        currentLine = leftPart.split('').map((c, i) => c).join('') + 
+                      spriteLine.split('').map((c, i) => (c === ' ' ? currentLine[charHOffset + i] : c)).join('') + 
+                      rightPart;
+    }
 
-    let finalLine = merged;
-    
+    // 2. Overlay HUD (Bottom)
+    const hudRowStart = bgHeight - 4;
+    const hudIdx = idx - hudRowStart;
+    if (hudIdx >= 0 && hudIdx < hudLines.length) {
+        const hudLine = hudLines[hudIdx];
+        const hudHOffset = Math.floor((bgWidth - hudLine.length) / 2);
+        const leftPart = currentLine.substring(0, hudHOffset);
+        const rightPart = currentLine.substring(hudHOffset + hudLine.length);
+        currentLine = leftPart + hudLine + rightPart;
+    }
+
     // Add horizontal scanline effect
     const scanlinePos = (animation_phase % 40);
     if (idx === scanlinePos || idx === scanlinePos - 1) {
-        finalLine = finalLine.replace(/[^\s]/g, (c) => Math.random() > 0.5 ? "=" : "-");
+        currentLine = currentLine.replace(/[^\s]/g, (c) => Math.random() > 0.5 ? "=" : "-");
     }
 
+    // Global glitching
     if (isGlitched || iScale > 0.6) {
       if (Math.random() < (isGlitched ? 0.3 : 0.1)) {
         const offset = Math.floor(Math.random() * 4) - 2;
-        finalLine = offset > 0 ? " ".repeat(offset) + finalLine : finalLine.substring(Math.abs(offset));
+        currentLine = offset > 0 ? " ".repeat(offset) + currentLine : currentLine.substring(Math.abs(offset));
       }
     }
-    return finalLine;
+
+    return currentLine;
   }).join("\n");
 
   return frame;

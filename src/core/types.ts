@@ -18,6 +18,7 @@ export interface State {
   stream_mode: boolean;
   event_history: Event[];
   last_speech: string;
+  full_speech: string; // The complete unchunked speech for typewriter rendering
   speech_queue: string[];
   last_command_phase: number;
   color_mode: 'standard' | 'warm';
@@ -40,6 +41,7 @@ export const INITIAL_STATE: State = {
   stream_mode: false,
   event_history: [],
   last_speech: 'SYSTEM IDLE. CORE WARM.',
+  full_speech: 'SYSTEM IDLE. CORE WARM.',
   speech_queue: [],
   last_command_phase: -1,
   color_mode: 'standard',
