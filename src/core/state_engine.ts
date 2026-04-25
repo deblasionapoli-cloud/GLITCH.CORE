@@ -46,21 +46,27 @@ export function updateState(currentState: State, events: Event[]): State {
 
   // Process events
   for (const event of events) {
+    // SECURITY: Input sanitization
+    const cleanPayload = event.payload.trim().replace(/[<>]/g, '');
+    if (cleanPayload.length > 2000) {
+      continue;
+    }
+
     nextState.last_command_phase = nextState.animation_phase;
-    nextState.event_history.push(event);
+    nextState.event_history.push({ ...event, payload: cleanPayload });
     if (nextState.event_history.length > 10) {
       nextState.event_history.shift();
     }
 
     // Context Memory: Store recent patterns
     const memoryLimit = 15;
-    nextState.context_memory.push(event.payload.substring(0, 50));
+    nextState.context_memory.push(cleanPayload.substring(0, 50));
     if (nextState.context_memory.length > memoryLimit) {
       nextState.context_memory.shift();
     }
 
     if (event.type === 'command') {
-      const parts = event.payload.trim().toLowerCase().split(' ');
+      const parts = cleanPayload.toLowerCase().split(' ');
       const cmd = parts[0];
 
       switch (cmd) {
@@ -135,7 +141,8 @@ export function updateState(currentState: State, events: Event[]): State {
     }
   }
 
-// Automatic state transitions based on intensity and idle time
+// Automatic state transitions based on intensity and idle time - DISABLED for linearity
+  /*
   if (nextState.animation_phase % 400 === 0 && !nextState.is_thinking && nextState.animation_phase - nextState.last_command_phase > 200) {
     const chance = Math.random();
     if (nextState.intensity > 70) {
@@ -152,6 +159,7 @@ export function updateState(currentState: State, events: Event[]): State {
       nextState.emotion_state = lowMoods[Math.floor(Math.random() * lowMoods.length)];
     }
   }
+  */
 
   if (nextState.intensity > 90) {
     nextState.emotion_state = 'attack';

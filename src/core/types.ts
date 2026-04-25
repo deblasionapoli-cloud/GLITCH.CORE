@@ -53,5 +53,5 @@ export const INITIAL_STATE: State = {
     gpu_usage: 2
   },
   context_memory: [],
-  is_thinking: false,
+  is_thinking: false
 };

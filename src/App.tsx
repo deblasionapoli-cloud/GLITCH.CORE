@@ -420,14 +420,14 @@ export default function App() {
       </div>
 
       {/* Main Container */}
-      <div className="relative group flex flex-col items-center gap-2 w-full h-screen max-w-[1200px]">
+      <div className="relative group flex flex-col items-center gap-0 w-full h-screen max-w-full">
         {/* Character Box */}
         <div 
-          className="relative group/box flex-1 w-full flex items-center justify-center"
+          className="relative group/box flex-1 w-full flex items-center justify-center p-0"
         >
           {/* Decorative Border Glow */}
           <div 
-            className="absolute -inset-2 blur-2xl opacity-10 group-hover/box:opacity-20 transition-all duration-1000"
+            className="absolute -inset-4 blur-3xl opacity-10 group-hover/box:opacity-20 transition-all duration-1000"
             style={{ 
               backgroundColor: state.emotion_state === 'attack' ? '#FF3300' : 
                               state.color_mode === 'warm' ? '#FFCC00' :
@@ -441,23 +441,23 @@ export default function App() {
           
           <div 
             ref={containerRef}
-            className={`relative flex flex-col items-center bg-transparent md:bg-black/50 border border-white/5 rounded-sm px-1 py-2 backdrop-blur-sm shadow-2xl transition-all duration-300 overflow-hidden ${isFullscreen ? 'fixed inset-0 w-screen h-screen z-40' : 'w-full h-full'}`}
+            className={`relative flex flex-col items-center bg-transparent md:bg-black/80 border-none md:border md:border-white/5 rounded-none px-0 py-0 backdrop-blur-sm shadow-none transition-all duration-300 overflow-hidden ${isFullscreen ? 'fixed inset-0 w-screen h-screen z-40' : 'w-full h-full'}`}
           >
             {/* Fullscreen Toggle Button */}
             <button 
               onClick={toggleFullscreen}
-              className="absolute top-2 left-2 z-50 text-white/30 hover:text-white/80 transition-colors p-1"
+              className="absolute top-4 left-4 z-50 text-white/20 hover:text-white/80 transition-colors p-2"
               title="Toggle Protocol (Fullscreen)"
             >
-              {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={14} />}
+              {isFullscreen ? <Minimize2 size={24} /> : <Maximize2 size={18} />}
             </button>
-
+ 
             <pre 
-              className={`${themeClass} text-[3.2vh] md:text-[3.5vh] leading-[1.0] tracking-tighter whitespace-pre flex flex-col items-center justify-center select-none transition-all duration-200 overflow-hidden font-mono w-full h-full flex-1 max-h-screen`}
+              className={`${themeClass} text-[4.2vh] md:text-[4.5vh] leading-[1.05] tracking-tighter whitespace-pre flex flex-col items-center justify-center select-none transition-all duration-200 overflow-hidden font-mono w-full h-full flex-1`}
             >
               {frame.split('\n').map((line, i) => (
                 <div key={i} className="flex justify-center w-full">
-                  <span className="w-full text-center block" style={{ transform: 'scale(1.0, 1.1)', transformOrigin: 'center' }}>{line}</span>
+                  <span className="w-full text-center block" style={{ transform: 'scale(1.0, 1.05)', transformOrigin: 'center' }}>{line}</span>
                 </div>
               ))}
             </pre>

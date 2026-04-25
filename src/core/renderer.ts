@@ -17,8 +17,8 @@ export function renderFrame(state: State): string {
   const isGlitched = emotion_state === 'glitch';
 
   // 1. Procedural Background Layer (Data Stream)
-  const bgWidth = 72;
-  const bgHeight = 26; // Reduced to fit screen better
+  const bgWidth = 80;
+  const bgHeight = 32; // Increased to fill vertical space better
   const generateBGLine = (phase: number, row: number) => {
     const seed = (phase + row * 17) % 100;
     const chars = [" ", " ", " ", " ", ".", "·", "'", "`", " ", " "];
@@ -184,7 +184,7 @@ export function renderFrame(state: State): string {
   if (curL) lines.push(curL);
 
   // Buffer management: determine which window of lines to show
-  const maxHudLines = 5; // Reduced for better viewport fit
+  const maxHudLines = 8; // More lines for better visibility
   let hudLinesRendered: string[] = [];
   
   // Create cumulative character count per line to find cursor position
@@ -253,7 +253,7 @@ export function renderFrame(state: State): string {
         currentLine = lineChars.join('');
     }
 
-    // 2. Overlay HUD (Bottom)
+    // 2. Overlay HUD (Bottom Interaction)
     const hudRowStart = bgHeight - (maxHudLines + 1);
     const hudIdx = idx - hudRowStart;
     if (hudIdx >= 0 && hudIdx < hudLines.length) {
@@ -278,7 +278,7 @@ export function renderFrame(state: State): string {
     // Global glitching
     if (isGlitched || iScale > 0.6) {
       if (Math.random() < (isGlitched ? 0.3 : 0.1)) {
-        const offset = Math.floor(Math.random() * 4) - 2;
+        const offset = (Math.floor(Math.random() * 4) - 2);
         currentLine = offset > 0 ? " ".repeat(offset) + currentLine : currentLine.substring(Math.abs(offset));
       }
     }
