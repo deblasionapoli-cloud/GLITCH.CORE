@@ -20,16 +20,14 @@ export function renderFrame(state: State): string {
   const bgWidth = 80;
   const bgHeight = 32; // Increased to fill vertical space better
   const generateBGLine = (phase: number, row: number) => {
-    const seed = (phase + row * 17) % 100;
-    const chars = [" ", " ", " ", " ", ".", "·", "'", "`", " ", " "];
     let line = "";
     for (let i = 0; i < bgWidth; i++) {
-       // Clear edges to prevent 'vertical lines' on frame borders
-       if (i < 2 || i > bgWidth - 3) {
-         line += " ";
-         continue;
-       }
-       const charIdx = (seed + i * 7) % chars.length;
+       // Deterministic noise based on phase, row and col
+       const noise = Math.sin(row * 0.5 + i * 0.8 + phase * 0.05) * Math.cos(row * 0.8 - i * 0.4 + phase * 0.02);
+       const val = Math.abs(noise);
+       
+       const chars = [" ", " ", " ", " ", ".", "·", " ", " "];
+       const charIdx = Math.floor(val * chars.length) % chars.length;
        line += chars[charIdx];
     }
     return line;
@@ -300,7 +298,10 @@ export function renderFrame(state: State): string {
         for (let i = 0; i < hudLine.length; i++) {
             const hPos = hudHOffset + i;
             if (hPos >= 0 && hPos < bgWidth) {
-                lineChars[hPos] = hudLine[i];
+                // Transparency: only overwrite if HUD character is not a space
+                if (hudLine[i] !== ' ') {
+                    lineChars[hPos] = hudLine[i];
+                }
             }
         }
         currentLine = lineChars.join('');
@@ -338,7 +339,10 @@ export function renderFrame(state: State): string {
         const lineChars = frameLines[row].split('');
         for (let j = 0; j < logStr.length; j++) {
           if (startX + j < bgWidth) {
-            lineChars[startX + j] = logStr[j];
+            // Transparency: only overwrite if log character is not a space
+            if (logStr[j] !== ' ') {
+              lineChars[startX + j] = logStr[j];
+            }
           }
         }
         frameLines[row] = lineChars.join('');

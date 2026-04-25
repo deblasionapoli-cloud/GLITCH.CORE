@@ -456,15 +456,23 @@ export default function App() {
             className={`${themeClass} text-[2.4vh] md:text-[2.8vh] leading-none tracking-tighter flex flex-col items-center justify-center select-none transition-all duration-200 overflow-hidden font-mono w-full h-full flex-1`}
           >
             {frame.split('\n').map((line, i) => {
-              const isHud = i >= 25;
+              // AREA SEPARATION: Character (Top/Mid) vs HUD (Bottom)
+              // The HUD starts at index 26 and lasts for 4 lines (up to 29)
+              const isHud = i >= 26 && i < 30; 
+              
               return (
-                <div key={i} className={`flex justify-center w-full overflow-visible ${isHud ? 'py-[0.4vh]' : 'py-[0.05vh]'}`}>
+                <div 
+                  key={i} 
+                  className={`flex justify-center w-full overflow-visible ${isHud ? 'py-[0.5vh]' : 'py-[0.01vh]'}`}
+                  data-entity={isHud ? 'hud' : 'character'}
+                >
                   <span 
-                    className={`whitespace-pre inline-block ${isHud ? 'font-bold' : ''}`} 
+                    className={`whitespace-pre inline-block transition-all duration-300 ${isHud ? 'font-bold opacity-100' : 'opacity-90'}`} 
                     style={{ 
-                      transform: isHud ? 'scale(2.2, 1.6)' : 'scale(1.3, 1.1)', 
+                      // HUD gets a massive boost for readability, Character stays artistic
+                      transform: isHud ? 'scale(2.4, 1.8)' : 'scale(1.25, 1.1)', 
                       transformOrigin: 'center',
-                      filter: isHud ? 'brightness(1.5)' : 'none'
+                      filter: isHud ? 'brightness(1.6) drop-shadow(0 0 2px rgba(255,255,255,0.2))' : 'none'
                     }}
                   >
                     {line}
