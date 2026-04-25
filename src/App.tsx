@@ -462,33 +462,37 @@ export default function App() {
             {/* Diffusion Layer */}
             <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
             
-            {frame.split('\n').map((line, i) => {
-              // AREA SEPARATION: Character (Top/Mid) vs HUD (Bottom)
-              const isHud = i >= 27 && i <= 30; 
-              const isSpecialRow = i === 32;
+            {(() => {
+              const now = Date.now();
+              const intensitySin = 0.96 + Math.sin(now * 0.005) * 0.02;
+              const lines = frame.split('\n');
               
-              return (
-                <div 
-                  key={i} 
-                  className={`flex justify-center w-full overflow-visible ${isHud ? 'py-[0.5vh]' : 'py-[0.01vh]'} ${isSpecialRow ? 'relative' : ''}`}
-                  data-entity={isHud ? 'hud' : isSpecialRow ? 'special-row' : 'character'}
-                >
-                  <span 
-                    className={`whitespace-pre inline-block transition-all duration-300 ${isHud ? 'font-bold opacity-100' : 'opacity-[0.85]'}`} 
-                    style={{ 
-                      // Uniform scaling and distinctive diffusion for a consistent Blackmagic 1 filter look
-                      transform: isHud ? 'scale(2.2, 1.7)' : 'scale(1.2, 1.1)', 
-                      transformOrigin: 'center',
-                      filter: isHud 
-                        ? `blur(0.2px) brightness(1.6) drop-shadow(0 0 2px rgba(255,255,255,0.25))` 
-                        : `blur(0.4px) drop-shadow(0 0 3px rgba(255,255,255,0.15)) brightness(${0.96 + Math.sin(Date.now() * 0.005) * 0.02})`
-                    }}
+              return lines.map((line, i) => {
+                const isHud = i >= 27 && i <= 30; 
+                const isSpecialRow = i === 32;
+                
+                return (
+                  <div 
+                    key={i} 
+                    className={`flex justify-center w-full overflow-visible ${isHud ? 'py-[0.5vh]' : 'py-[0.01vh]'} ${isSpecialRow ? 'relative' : ''}`}
+                    data-entity={isHud ? 'hud' : isSpecialRow ? 'special-row' : 'character'}
                   >
-                    {line}
-                  </span>
-                </div>
-              );
-            })}
+                    <span 
+                      className={`whitespace-pre inline-block transition-all duration-300 ${isHud ? 'font-bold opacity-100' : 'opacity-[0.85]'}`} 
+                      style={{ 
+                        transform: isHud ? 'scale(2.2, 1.7)' : 'scale(1.2, 1.1)', 
+                        transformOrigin: 'center',
+                        filter: isHud 
+                          ? `blur(0.2px) brightness(1.6) drop-shadow(0 0 2px rgba(255,255,255,0.25))` 
+                          : `blur(0.4px) drop-shadow(0 0 3px rgba(255,255,255,0.15)) brightness(${intensitySin})`
+                      }}
+                    >
+                      {line}
+                    </span>
+                  </div>
+                );
+              });
+            })()}
           </pre>
           </div>
         </div>

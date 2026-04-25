@@ -205,17 +205,17 @@ export function renderFrame(state: State): string {
     const sIdx = y - charVOffset;
     if (sIdx >= 0 && sIdx < processedSprite.length) {
       const sLine = processedSprite[sIdx];
-      // OPTIMIZATION: Overwrite using substrings instead of split/join
+      // OPTIMIZATION: Overwrite using substrings to avoid per-character allocation
+      const leftPart = line.substring(0, charHOffset);
+      const rightPart = line.substring(charHOffset + sLine.length);
+      
+      // We still need per-char check for 'transparency' (spaces in sprite)
       let merged = "";
       for (let x = 0; x < sLine.length; x++) {
-        const targetX = charHOffset + x;
-        if (targetX >= 0 && targetX < bgWidth && sLine[x] !== ' ') {
-          merged += sLine[x];
-        } else {
-          merged += line[targetX] || " ";
-        }
+        const char = sLine[x];
+        merged += (char !== ' ') ? char : line[charHOffset + x];
       }
-      line = line.substring(0, charHOffset) + merged + line.substring(charHOffset + sLine.length);
+      line = leftPart + merged + rightPart;
     }
     
     // Overlay HUD (Clean background for text area)
@@ -246,8 +246,4 @@ export function renderFrame(state: State): string {
   }
 
   return frameLines.join("\n");
-}
-
-function shiftLeft(s: string, n: number): string {
-  return s.substring(n) + " ".repeat(n);
 }
