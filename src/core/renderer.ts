@@ -78,7 +78,7 @@ export function renderFrame(state: State): string {
 
   const breathOffset = Math.floor(Math.sin(animation_phase * 0.15) * 1.2);
   const floatOffset = Math.floor(Math.cos(animation_phase * 0.05) * 0.8);
-  const totalYShift = breathOffset + floatOffset;
+  const totalYShift = breathOffset + floatOffset - 4;
 
   let brow = "  .___________________.  ";
   if (emotion_state === 'alert' || emotion_state === 'attack' || emotion_state === 'angry') brow = "  .^^^^^^^^^^^^^^^^^^^.  ";
@@ -161,7 +161,7 @@ export function renderFrame(state: State): string {
 
   // 5. HUD Dynamic Text Rendering: Typewriter with [ Frame ]
   const displayedSpeech = state.full_speech || "";
-  const wrapWidth = 58; // Increased interior width for text
+  const wrapWidth = 52; // Interior width for text with brackets
   
   // Typewriter timing
   const charSpeed = 1.8 + (state.intensity / 40);
@@ -212,21 +212,21 @@ export function renderFrame(state: State): string {
     const visibleInLine = Math.max(0, visibleCharsThreshold - prevChars);
     
     if (visibleInLine <= 0) {
-      hudLinesRendered.push(`  | ${"".padEnd(wrapWidth)} |  `);
+      hudLinesRendered.push(`[ ${"".padEnd(wrapWidth)} ]`);
     } else if (visibleInLine < line.length) {
       const p = line.substring(0, visibleInLine);
       const gl = ["_", "█", "▒", "░"][Math.floor(animation_phase / 4) % 4];
-      hudLinesRendered.push(`  | ${(p + gl).padEnd(wrapWidth)} |  `);
+      hudLinesRendered.push(`[ ${(p + gl).padEnd(wrapWidth)} ]`);
     } else {
-      hudLinesRendered.push(`  | ${line.padEnd(wrapWidth)} |  `);
+      hudLinesRendered.push(`[ ${line.padEnd(wrapWidth)} ]`);
     }
   });
 
   while (hudLinesRendered.length < maxHudLines) {
-    hudLinesRendered.push(`  | ${"".padEnd(wrapWidth)} |  `);
+    hudLinesRendered.push(`[ ${"".padEnd(wrapWidth)} ]`);
   }
 
-  const hudLines = ["  .____________________________________________________________.  ", ...hudLinesRendered, "  '------------------------------------------------------------'  "];
+  const hudLines = hudLinesRendered;
 
   // 4. Composite: Foreground over Background
   const bgLines = new Array(bgHeight).fill("").map((_, idx) => generateBGLine(animation_phase, idx));
@@ -254,7 +254,7 @@ export function renderFrame(state: State): string {
     }
 
     // 2. Overlay HUD (Bottom Interaction)
-    const hudRowStart = bgHeight - (hudLines.length + 1);
+    const hudRowStart = bgHeight - (hudLines.length + 1) - 4;
     const hudIdx = idx - hudRowStart;
     if (hudIdx >= 0 && hudIdx < hudLines.length) {
         const hudLine = hudLines[hudIdx];
