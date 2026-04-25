@@ -152,6 +152,7 @@ export default function App() {
       .replace(/\[STATE:\s*[^\]]+\]/gi, '')
       .replace(/\[INTENSITY:\s*[^\]]+\]/gi, '')
       .replace(/\[.*?\]/gi, '') // Final catch-all
+      .replace(/\*.*?\*/gi, '') // Strip asterisk descriptions
       .replace(/\s+/g, ' ')
       .trim();
 

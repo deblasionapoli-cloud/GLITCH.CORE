@@ -18,7 +18,7 @@ export function renderFrame(state: State): string {
 
   // 1. Procedural Background Layer (Data Stream)
   const bgWidth = 72;
-  const bgHeight = 22;
+  const bgHeight = 26;
   const generateBGLine = (phase: number, row: number) => {
     const seed = (phase + row * 17) % 100;
     const chars = [" ", " ", " ", " ", ".", "·", "'", "`", " ", " "];
@@ -34,16 +34,6 @@ export function renderFrame(state: State): string {
   const blinkInterval = isGlitched ? 60 : 180;
   const isBlinking = (animation_phase % blinkInterval < 4) || (isGlitched && Math.random() > 0.9);
   
-  // Row-specific jitter seed
-  const getRowJitter = (rowIdx: number) => {
-    if (!isGlitched && iScale < 0.4) return "";
-    const rowEntropy = Math.sin(animation_phase * 0.5 + rowIdx * 0.2);
-    if (rowEntropy > 0.8 || Math.random() < (iScale * 0.1)) {
-        return "  ".repeat(Math.floor(Math.random() * 2) + 1);
-    }
-    return "";
-  };
-
   // 3. Eye Movement & Noise
   const isProcessing = state.last_command_phase >= 0 && (animation_phase - state.last_command_phase < 5);
   const isCalmIdle = emotion_state === 'calm' && Math.random() > 0.92;
@@ -70,7 +60,6 @@ export function renderFrame(state: State): string {
   } else if (emotion_state === 'surprised') {
     eyeL = " o "; eyeR = " o "; eyeC = " [o] ";
   } else if (emotion_state === 'curious') {
-    // Advanced Curious Eye: Scanning and focal points
     const scanTime = Math.floor(animation_phase / 6);
     const focalPoint = scanTime % 8;
     const eyeFrames = [" o ", " . ", " O ", " o ", " 0 ", " . ", " o ", " @ "];
@@ -85,9 +74,8 @@ export function renderFrame(state: State): string {
 
   // 4. Sprite Rendering (Fixed to Carhartt Boy)
   let spriteLines: string[] = [];
-  const isSpeaking = state.last_command_phase >= 0 && (animation_phase - state.last_command_phase < 45);
+  const isSpeaking = state.last_command_phase >= 0 && (animation_phase - state.last_command_phase < 120);
 
-  // Breathing effect: slight vertical offset based on phase
   const breathOffset = Math.floor(Math.sin(animation_phase * 0.15) * 1.2);
   const floatOffset = Math.floor(Math.cos(animation_phase * 0.05) * 0.8);
   const totalYShift = breathOffset + floatOffset;
@@ -98,18 +86,10 @@ export function renderFrame(state: State): string {
   if (emotion_state === 'surprised') brow = "  .  /             \\  .  ";
   if (emotion_state === 'happy') brow = "  .   \\           /   .  ";
   if (emotion_state === 'sad') brow = "  .   /           \\   .  ";
-  if (isCalmIdle && Math.random() > 0.6) brow = "  .^^^^^^^^^^^^^^^^^^^.  ";
 
   let mouth = "|    {===========}    |";
   if (isSpeaking) {
-    const frames = [
-      "|    {    ---    }    |",
-      "|    {   (---)   }    |",
-      "|    {    -o-    }    |",
-      "|    {     o     }    |",
-      "|    {    ( )    }    |",
-      "|    {    ---    }    |"
-    ];
+    const frames = ["|    {    ---    }    |", "|    {   (---)   }    |", "|    {    -o-    }    |", "|    {     o     }    |", "|    {    ---    }    |"];
     mouth = frames[animation_phase % frames.length];
   } else if (emotion_state === 'attack' || emotion_state === 'angry') {
     mouth = (animation_phase % 2 === 0) ? "|    {VVVVVVVVVVV}    |" : "|    {^^^^^^^^^^^}    |";
@@ -117,19 +97,10 @@ export function renderFrame(state: State): string {
     mouth = "|    {  \\_______/  }    |";
   } else if (emotion_state === 'sad') {
     mouth = "|    {  /-------\\  }    |";
-  } else if (emotion_state === 'surprised') {
-    mouth = "|    {    (   )    }    |";
-  } else if (emotion_state === 'curious') {
-    mouth = animation_phase % 4 < 2 ? "|    {  _______  }    |" : "|    {  -------  }    |";
-  } else if (emotion_state === 'bored') {
-    mouth = "|    {  ---------  }    |";
   }
 
   let nose = "|          ^          |";
   if (isProcessing && animation_phase % 2 === 0) nose = "|         (<*>)        |";
-  else if (emotion_state === 'attack' || emotion_state === 'angry') nose = "|         /V\\         |";
-  else if (emotion_state === 'happy') nose = "|          v          |";
-  else if (emotion_state === 'sad') nose = "|          .          |";
 
   spriteLines = [
     "      .-----------------.      ",
@@ -146,23 +117,20 @@ export function renderFrame(state: State): string {
     "    '___________________'  "
   ];
 
-  // --- SPRITE SCALING (Horizontal ~2.2x, Vertical ~1.3x) ---
   // Horizontal scaling
   spriteLines = spriteLines.map(line => {
     let scaled = "";
     for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      scaled += char;
-      // 2.2x factor: double every character, and triple every 5th character
-      if (char !== 'C') {
+        const char = line[i];
         scaled += char;
-        if (i % 5 === 0) scaled += char;
-      }
+        if (char !== 'C') {
+            scaled += char;
+            if (i % 5 === 0) scaled += char;
+        }
     }
     return scaled;
   });
 
-  // Apply a slight horizontal sway
   const horizontalSway = Math.floor(Math.sin(animation_phase * 0.08) * 2);
   if (horizontalSway !== 0) {
     spriteLines = spriteLines.map(line => {
@@ -171,38 +139,25 @@ export function renderFrame(state: State): string {
     });
   }
 
-  // Vertical scaling (approx 1.3x)
   const verticallyScaled: string[] = [];
   for (let i = 0; i < spriteLines.length; i++) {
     verticallyScaled.push(spriteLines[i]);
-    // Duplicate every 3rd line to get ~1.3x height
-    if (i % 3 === 2) {
-      verticallyScaled.push(spriteLines[i]);
-    }
+    if (i % 3 === 2) verticallyScaled.push(spriteLines[i]);
   }
   spriteLines = verticallyScaled;
 
-  // --- ENTROPY & GLITCH OVERLAY ---
   const entropy = state.intensity / 100;
-  const isCurrentlyGlitching = emotion_state === 'glitch' || Math.random() < (entropy * 0.15);
-
-  if (isCurrentlyGlitching) {
+  if (emotion_state === 'glitch' || Math.random() < (entropy * 0.15)) {
     spriteLines = spriteLines.map(line => {
       if (Math.random() < (0.1 + entropy * 0.2)) {
         return line.split('').map(char => {
           if (char === ' ') return Math.random() < 0.05 ? "." : " ";
-          return Math.random() < (0.2 + entropy * 0.3) ? ["@", "#", "$", "%", "&", "!", "?", "0", "1", "X"][Math.floor(Math.random() * 10)] : char;
+          return Math.random() < (0.2 + entropy * 0.3) ? ["@", "#", "$", "%", "!", "?", "0", "1", "X"][Math.floor(Math.random() * 9)] : char;
         }).join('');
       }
       return line;
     });
   }
-
-  // Calculate max sprite width for speech alignment
-  const maxSpriteWidth = Math.max(...spriteLines.map(l => l.length));
-  const speechBoxWidth = 29; // "[ " + 25 + " ]"
-  const speechAlignOffset = Math.max(0, Math.floor((maxSpriteWidth - speechBoxWidth) / 2));
-  const speechPadding = " ".repeat(speechAlignOffset);
 
   // 5. HUD Dynamic Text Rendering: Typewriter with [ Frame ]
   const displayedSpeech = state.full_speech || "";
@@ -210,53 +165,70 @@ export function renderFrame(state: State): string {
   
   // Typewriter timing
   const charSpeed = 1.8 + (state.intensity / 40);
-  const visibleCharsThreshold = Math.floor((animation_phase - state.last_command_phase) * charSpeed);
+  const timeSinceCommand = animation_phase - state.last_command_phase;
+  const visibleCharsThreshold = Math.floor(timeSinceCommand * charSpeed);
   
   // Wrap the FULL speech first to get stable lines
-  const allWords = displayedSpeech.split(' ');
+  const words = displayedSpeech.split(' ');
   const lines: string[] = [];
-  let currentLine = "";
+  let curL = "";
   
-  allWords.forEach(word => {
-    if ((currentLine + word).length <= wrapWidth) {
-      currentLine += (currentLine === "" ? "" : " ") + word;
+  words.forEach(word => {
+    if ((curL + word).length <= wrapWidth) {
+      curL += (curL === "" ? "" : " ") + word;
     } else {
-      lines.push(currentLine);
-      currentLine = word;
+      lines.push(curL);
+      curL = word;
     }
   });
-  if (currentLine) lines.push(currentLine);
+  if (curL) lines.push(curL);
 
-  // Now determine which lines/characters are visible
+  // Buffer management: determine which window of lines to show
+  const maxHudLines = 5;
+  let hudLinesRendered: string[] = [];
   let charsProcessed = 0;
-  const hudLinesRendered: string[] = [];
   
-  for (let i = 0; i < lines.length && hudLinesRendered.length < 4; i++) {
-    const line = lines[i];
-    const lineVisibleCount = Math.max(0, visibleCharsThreshold - charsProcessed);
+  // Find which line we are currently typing
+  let currentTypingLineIdx = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (visibleCharsThreshold < charsProcessed + lines[i].length) {
+      currentTypingLineIdx = i;
+      break;
+    }
+    charsProcessed += lines[i].length;
+    currentTypingLineIdx = i;
+  }
+
+  // Windowing: show a scrolling window of lines
+  const startLineIdx = Math.max(0, currentTypingLineIdx - (maxHudLines - 1));
+  const visibleLinesInWindow = lines.slice(startLineIdx, startLineIdx + maxHudLines);
+  
+  let windowCharsProcessed = 0;
+  // Recalculate processed chars up to startLineIdx for correct typewriter reveal in the window
+  let charsBeforeWindow = 0;
+  for(let i=0; i<startLineIdx; i++) charsBeforeWindow += lines[i].length;
+
+  visibleLinesInWindow.forEach((line, i) => {
+    const lineAbsoluteIdx = startLineIdx + i;
+    const charsProcessedBeforeThisLine = charsBeforeWindow + visibleLinesInWindow.slice(0, i).reduce((acc, l) => acc + l.length, 0);
+    const lineVisibleCount = Math.max(0, visibleCharsThreshold - charsProcessedBeforeThisLine);
     
     if (lineVisibleCount <= 0) {
-      // Line not yet visible
       hudLinesRendered.push(`[ ${"".padEnd(wrapWidth)} ]`);
     } else if (lineVisibleCount < line.length) {
-      // Line partially visible
       const partial = line.substring(0, lineVisibleCount);
       const glitch = ["_", "█", "▒", "░"][Math.floor(animation_phase / 4) % 4];
       hudLinesRendered.push(`[ ${ (partial + glitch).padEnd(wrapWidth) } ]`);
-      charsProcessed += line.length;
-      break; // Stop here, rest of lines stay empty
     } else {
-      // Line fully visible
       hudLinesRendered.push(`[ ${line.padEnd(wrapWidth)} ]`);
-      charsProcessed += line.length;
     }
-  }
+  });
 
-  while (hudLinesRendered.length < 3) {
+  while (hudLinesRendered.length < maxHudLines) {
     hudLinesRendered.push(`[ ${"".padEnd(wrapWidth)} ]`);
   }
 
-  const hudLines = hudLinesRendered.slice(0, 3);
+  const hudLines = hudLinesRendered;
 
   // 4. Composite: Foreground over Background
   const bgLines = new Array(bgHeight).fill("").map((_, idx) => generateBGLine(animation_phase, idx));
@@ -264,7 +236,7 @@ export function renderFrame(state: State): string {
   // Character sprite layout
   const maxLineLength = Math.max(...spriteLines.map(l => l.length));
   const charHOffset = Math.max(0, Math.floor((bgWidth - maxLineLength) / 2));
-  const charVOffset = Math.max(0, Math.floor((bgHeight - (spriteLines.length + 5)) / 2) + totalYShift);
+  const charVOffset = Math.max(0, Math.floor((bgHeight - (spriteLines.length + maxHudLines + 1)) / 2) + totalYShift);
 
   const frame = bgLines.map((bg, idx) => {
     // 1. Overlay Character Sprite
@@ -284,7 +256,7 @@ export function renderFrame(state: State): string {
     }
 
     // 2. Overlay HUD (Bottom)
-    const hudRowStart = bgHeight - 4;
+    const hudRowStart = bgHeight - (maxHudLines + 1);
     const hudIdx = idx - hudRowStart;
     if (hudIdx >= 0 && hudIdx < hudLines.length) {
         const hudLine = hudLines[hudIdx];
