@@ -459,17 +459,15 @@ export default function App() {
               textShadow: '0 0 5px rgba(255,255,255,0.05)'
             }}
           >
-            {/* Diffusion Layer */}
-            <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
-            
             {(() => {
               const now = Date.now();
               const intensitySin = 0.96 + Math.sin(now * 0.005) * 0.02;
               const lines = frame.split('\n');
               
               return lines.map((line, i) => {
-                const isHud = i >= 27 && i <= 30; 
-                const isSpecialRow = i === 32;
+                // Expanded HUD and context range for rows 26-33
+                const isHud = (i >= 26); 
+                const isSpecialRow = i >= 32;
                 
                 return (
                   <div 

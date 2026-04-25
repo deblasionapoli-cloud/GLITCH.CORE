@@ -199,9 +199,10 @@ export function renderFrame(state: State): string {
   const hudHOffset = (bgWidth - (wrapWidth + 4)) >> 1;
 
   for (let y = 0; y < bgHeight; y++) {
-    let line = generateBGLine(animation_phase, y);
+    const isCleanZone = (y >= 26);
+    let line = isCleanZone ? " ".repeat(bgWidth) : generateBGLine(animation_phase, y);
     
-    // Overlay Sprite
+    // Overlay Sprite (only on non-CleanZone rows or handle transparency if it overlaps)
     const sIdx = y - charVOffset;
     if (sIdx >= 0 && sIdx < processedSprite.length) {
       const sLine = processedSprite[sIdx];
@@ -227,7 +228,7 @@ export function renderFrame(state: State): string {
 
     // Fast scanline
     const scanPos = (animation_phase % 40);
-    if (y === scanPos || y === scanPos - 1) {
+    if (!isCleanZone && (y === scanPos || y === scanPos - 1)) {
       line = line.replace(/[^\s]/g, (c) => Math.random() > 0.5 ? "=" : "-");
     }
 
@@ -237,7 +238,7 @@ export function renderFrame(state: State): string {
   // Global glitching (post-process)
   if (emotion_state === 'glitch' || entropy > 0.6) {
     for (let i = 0; i < frameLines.length; i++) {
-      if (Math.random() < (emotion_state === 'glitch' ? 0.2 : 0.05)) {
+      if (i < 26 && Math.random() < (emotion_state === 'glitch' ? 0.2 : 0.05)) {
         const offset = Math.floor(Math.random() * 5) - 2;
         if (offset > 0) frameLines[i] = " ".repeat(offset) + frameLines[i].substring(0, bgWidth - offset);
         else if (offset < 0) frameLines[i] = frameLines[i].substring(-offset).padEnd(bgWidth, " ");
