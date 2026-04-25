@@ -131,38 +131,98 @@ export default function App() {
     const morphMatch = response.match(/\[FORM:\s*([^\]]+)\]/i);
     if (morphMatch) {
       const morphName = morphMatch[1].trim().toLowerCase();
-      // Valid morphs: blob, eye, hardware, ditto, spiky
       const validMorphs = ['blob', 'eye', 'hardware', 'ditto', 'spiky'];
       if (validMorphs.includes(morphName)) {
         socketRef.current?.emit('command', `morph ${morphName}`);
       }
-      
-      // Remove the form tag from the text and clean up whitespace
-      cleanResponse = cleanResponse.replace(/\[FORM:\s*[^\]]+\]/gi, '').replace(/\s+/g, ' ').trim();
     }
 
-    if (cleanResponse || morphMatch) {
+    // Check for state tags: [STATE: mood]
+    const stateMatch = response.match(/\[STATE:\s*([^\]]+)\]/i);
+    if (stateMatch) {
+      const stateName = stateMatch[1].trim().toLowerCase();
+      const validStates = ['glitch', 'attack', 'alert', 'calm'];
+      if (validStates.includes(stateName)) {
+        socketRef.current?.emit('command', stateName);
+      }
+    }
+
+    // Check for intensity tags: [INTENSITY: value]
+    const intensityMatch = response.match(/\[INTENSITY:\s*(\d+)\]/i);
+    if (intensityMatch) {
+      const val = parseInt(intensityMatch[1]);
+      if (!isNaN(val)) {
+        socketRef.current?.emit('command', `intensity ${val}`);
+      }
+    }
+    
+    // Clean all tags from display text
+    cleanResponse = response
+      .replace(/\[FILE:\s*[^\]]+\][\s\S]*?\[\/FILE\]/gi, '')
+      .replace(/\[FORM:\s*[^\]]+\]/gi, '')
+      .replace(/\[STATE:\s*[^\]]+\]/gi, '')
+      .replace(/\[INTENSITY:\s*[^\]]+\]/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (cleanResponse) {
       socketRef.current?.emit('command', `speak ${response}`);
     }
   };
 
   const handleCommandExecution = async (cmd: string) => {
-    const cleanInput = cmd.trim().toLowerCase();
+    const cleanInput = cmd.trim();
     if (!cleanInput || !socketRef.current) return;
 
     resetIdleTimer();
 
-    const systemCommands = ['calm', 'attack', 'alert', 'glitch', 'stream on', 'stream off', 'morph'];
-    const isSystemCmd = systemCommands.some(cmd => cleanInput.startsWith(cmd));
-
-    if (isSystemCmd) {
-      socketRef.current.emit('command', cleanInput);
-    } else {
-      setIsAiLoading(true);
-      const aiResponse = await askDaemon(cleanInput);
-      setIsAiLoading(false);
-      processDaemonResponse(aiResponse);
+    // Natural Language Intent Mapping (Local)
+    const lowerInput = cleanInput.toLowerCase();
+    
+    // Quick triggers for state
+    if (lowerInput.match(/\b(calmati|calma|shh|tranquillo|calm)\b/)) {
+      socketRef.current.emit('command', 'calm');
+      return;
     }
+    if (lowerInput.match(/\b(attacca|distruggi|aggressivo|attack|kill)\b/)) {
+      socketRef.current.emit('command', 'attack');
+      return;
+    }
+    if (lowerInput.match(/\b(impazzisci|errore|glitch|bug|crash)\b/)) {
+      socketRef.current.emit('command', 'glitch');
+      return;
+    }
+    if (lowerInput.match(/\b(attenzione|avviso|alert|occhio|vigile)\b/)) {
+      socketRef.current.emit('command', 'alert');
+      return;
+    }
+
+    // Stream control
+    if (lowerInput.includes('stream on') || lowerInput.includes('attiva stream')) {
+      socketRef.current.emit('command', 'stream on');
+      return;
+    }
+    if (lowerInput.includes('stream off') || lowerInput.includes('disattiva stream')) {
+      socketRef.current.emit('command', 'stream off');
+      return;
+    }
+
+    // Morph control
+    const morphMatch = lowerInput.match(/\b(cambia forma in|trasformati in|morph|forma)\s+(\w+)\b/);
+    if (morphMatch) {
+      const morphName = morphMatch[2];
+      const validMorphs = ['blob', 'eye', 'hardware', 'ditto', 'spiky'];
+      if (validMorphs.includes(morphName)) {
+        socketRef.current.emit('command', `morph ${morphName}`);
+        return;
+      }
+    }
+
+    // Fallback to AI for complex commands
+    setIsAiLoading(true);
+    const aiResponse = await askDaemon(cleanInput);
+    setIsAiLoading(false);
+    processDaemonResponse(aiResponse);
   };
 
   const handleFileUpload = async (fileOrEvent: File | React.ChangeEvent<HTMLInputElement>) => {
@@ -262,44 +322,71 @@ export default function App() {
   // If in Remote Mode, show a simplified UI
   if (isRemoteMode) {
     return (
-      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-6 font-mono text-phosphor-green selection:bg-phosphor-green selection:text-black">
+      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-6 font-mono text-phosphor-green selection:bg-phosphor-green selection:text-black relative">
+        {/* Remote Grid Background */}
+        <div className="absolute inset-0 opacity-5 pointer-events-none bg-[linear-gradient(rgba(0,255,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,0,0.1)_1px,transparent_1px)] bg-[size:40px_40px]" />
+        
         <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md bg-black/50 border border-phosphor-green/20 rounded-lg p-8 backdrop-blur-xl shadow-[0_0_50px_rgba(0,255,0,0.1)]"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-lg bg-black/60 border border-phosphor-green/30 rounded-xl p-10 backdrop-blur-2xl shadow-[0_0_80px_rgba(0,255,0,0.15)] relative z-10"
         >
-          <div className="flex items-center gap-3 mb-8 opacity-50">
-            <Radio className="animate-pulse" size={20} />
-            <h1 className="text-xs uppercase tracking-[0.3em] font-bold">Remote Command Uplink</h1>
+          <div className="flex items-center justify-between mb-10">
+            <div className="flex items-center gap-4">
+              <div className="w-2 h-2 rounded-full bg-phosphor-green animate-ping" />
+              <div className="flex items-center gap-2 opacity-60">
+                <Radio size={14} />
+                <h1 className="text-[10px] uppercase tracking-[0.4em] font-bold">Uplink.Online</h1>
+              </div>
+            </div>
+            <div className="text-[10px] opacity-30 uppercase tracking-widest font-bold">
+              Latency: 12ms
+            </div>
           </div>
           
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="relative">
-              <span className="absolute left-0 top-0 text-phosphor-green/40 text-xs tracking-tighter">TARGET: GLITCH.CORE</span>
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="relative group">
+              <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-1 h-0 group-focus-within:h-8 bg-phosphor-green transition-all" />
               <input 
                 type="text"
                 autoFocus
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                className="w-full bg-transparent border-b border-phosphor-green/10 focus:border-phosphor-green/60 outline-none py-4 text-xl uppercase tracking-widest transition-all"
-                placeholder="TYPE_INPUT"
+                className="w-full bg-transparent border-b border-phosphor-green/20 focus:border-phosphor-green/80 outline-none py-6 text-2xl uppercase tracking-[0.2em] transition-all placeholder:text-phosphor-green/10"
+                placeholder="INPUT_SEQUENCE"
               />
+              <div className="flex justify-between mt-2">
+                <span className="text-[8px] opacity-40 uppercase tracking-widest">Protocol: Encrypted_Tunnel</span>
+                <span className="text-[8px] opacity-40 uppercase tracking-widest">Buffer: Clear</span>
+              </div>
             </div>
+            
             <button 
               type="submit"
-              className="w-full bg-phosphor-green/10 hover:bg-phosphor-green/20 border border-phosphor-green/20 text-phosphor-green py-3 rounded-sm uppercase tracking-[0.4em] text-[10px] transition-all"
+              className="w-full group relative overflow-hidden bg-phosphor-green/5 hover:bg-phosphor-green/10 border border-phosphor-green/20 text-phosphor-green py-4 rounded-md uppercase tracking-[0.5em] text-[11px] font-bold transition-all"
             >
-              Execute_Sequence
+              <span className="relative z-10">Transmit_Direct</span>
+              <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-phosphor-green/10 to-transparent" />
             </button>
           </form>
 
-          <button 
-            onClick={() => setIsRemoteMode(false)}
-            className="mt-12 text-[8px] uppercase tracking-widest text-white/20 hover:text-white/60 transition-colors block mx-auto"
-          >
-            Switch_Back_To_Terminal
-          </button>
+          <div className="mt-12 flex flex-col items-center gap-4">
+             <div className="w-full h-[1px] bg-white/5" />
+             <button 
+              onClick={() => setIsRemoteMode(false)}
+              className="group flex items-center gap-2 text-[9px] uppercase tracking-widest text-white/30 hover:text-white/80 transition-all"
+            >
+              <Terminal size={12} className="group-hover:rotate-12 transition-transform" />
+              Close_Remote_Session
+            </button>
+          </div>
         </motion.div>
+
+        {/* Status Bar Footer */}
+        <div className="fixed bottom-6 left-6 right-6 flex justify-between items-center opacity-20 text-[8px] uppercase tracking-[0.3em] font-bold">
+          <span>Signal_Strength: 98%</span>
+          <span>Core_Ready</span>
+        </div>
       </div>
     );
   }
@@ -377,11 +464,11 @@ export default function App() {
             </button>
 
             <pre 
-              className={`${themeClass} text-[4.5vh] leading-[0.95] tracking-tighter whitespace-pre flex flex-col items-center justify-center select-none transition-all duration-200 overflow-hidden font-mono w-full h-full flex-1`}
+              className={`${themeClass} text-[3.8vh] md:text-[4vh] leading-[1.0] tracking-tighter whitespace-pre flex flex-col items-center justify-center select-none transition-all duration-200 overflow-hidden font-mono w-full h-full flex-1`}
             >
               {frame.split('\n').map((line, i) => (
                 <div key={i} className="flex justify-center w-full">
-                  <span className="w-full text-center block" style={{ transform: 'scale(1.3, 1.15)', transformOrigin: 'center' }}>{line}</span>
+                  <span className="w-full text-center block" style={{ transform: 'scale(1.0, 1.1)', transformOrigin: 'center' }}>{line}</span>
                 </div>
               ))}
             </pre>

@@ -17,7 +17,7 @@ export function renderFrame(state: State): string {
   const isGlitched = emotion_state === 'glitch';
 
   // 1. Procedural Background Layer (Data Stream)
-  const bgWidth = 80;
+  const bgWidth = 72;
   const bgHeight = 22;
   const generateBGLine = (phase: number, row: number) => {
     const seed = (phase + row * 17) % 100;
@@ -230,10 +230,10 @@ export function renderFrame(state: State): string {
   const hudLines = rawSpeechLines_HUD.map((line, i) => {
     // Slight jitter to the line position if intensity is high
     const jitter = (intensity > 50 && Math.random() > 0.95) ? " " : "";
-    return `> ${jitter}${line.padEnd(wrapWidth)}`;
+    return `> ${jitter}${line}`.padEnd(wrapWidth + 3);
   });
 
-  while (hudLines.length < 3) hudLines.push(" ".repeat(wrapWidth + 2));
+  while (hudLines.length < 3) hudLines.push(" ".repeat(wrapWidth + 3));
 
   // Current sliding queue (smaller, to the side or above)
   const miniQueue = state.speech_queue.slice(0, 3).map(l => l.substring(0, 29));
@@ -253,13 +253,16 @@ export function renderFrame(state: State): string {
 
     if (spriteIdx >= 0 && spriteIdx < spriteLines.length) {
         const spriteLine = spriteLines[spriteIdx];
-        const leftPart = currentLine.substring(0, charHOffset);
-        const rightPart = currentLine.substring(charHOffset + spriteLine.length);
+        const spriteChars = spriteLine.split('');
+        const lineChars = currentLine.split('');
         
-        // Merge sprite characters
-        currentLine = leftPart.split('').map((c, i) => c).join('') + 
-                      spriteLine.split('').map((c, i) => (c === ' ' ? currentLine[charHOffset + i] : c)).join('') + 
-                      rightPart;
+        for (let i = 0; i < spriteChars.length; i++) {
+            const hPos = charHOffset + i;
+            if (hPos >= 0 && hPos < bgWidth && spriteChars[i] !== ' ') {
+                lineChars[hPos] = spriteChars[i];
+            }
+        }
+        currentLine = lineChars.join('');
     }
 
     // 2. Overlay HUD (Bottom)
@@ -268,9 +271,16 @@ export function renderFrame(state: State): string {
     if (hudIdx >= 0 && hudIdx < hudLines.length) {
         const hudLine = hudLines[hudIdx];
         const hudHOffset = Math.floor((bgWidth - hudLine.length) / 2);
-        const leftPart = currentLine.substring(0, hudHOffset);
-        const rightPart = currentLine.substring(hudHOffset + hudLine.length);
-        currentLine = leftPart + hudLine + rightPart;
+        const hudChars = hudLine.split('');
+        const lineChars = currentLine.split('');
+
+        for (let i = 0; i < hudChars.length; i++) {
+            const hPos = hudHOffset + i;
+            if (hPos >= 0 && hPos < bgWidth) {
+                lineChars[hPos] = hudChars[i];
+            }
+        }
+        currentLine = lineChars.join('');
     }
 
     // Add horizontal scanline effect
