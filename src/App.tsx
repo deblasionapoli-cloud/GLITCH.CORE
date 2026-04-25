@@ -23,7 +23,6 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isRemoteMode, setIsRemoteMode] = useState(false);
   const [generatedFiles, setGeneratedFiles] = useState<{name: string, time: string}[]>([]);
   const socketRef = useRef<Socket | null>(null);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -46,21 +45,8 @@ export default function App() {
     return () => document.removeEventListener('fullscreenchange', handleFsChange);
   }, []);
 
-  // Remote Command Listener
-  useEffect(() => {
-    if (user && !isRemoteMode) {
-      const unsub = onRemoteCommand(async (cmd, id) => {
-        console.log("Remote command received:", cmd);
-        await handleCommandExecution(cmd);
-        await markCommandProcessed(id);
-      });
-      return () => unsub?.();
-    }
-  }, [user, isRemoteMode]);
-
   const resetIdleTimer = () => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    if (isRemoteMode) return;
     
     // Più frequente: tra 45 e 120 secondi di inattività
     const randomInterval = 45000 + Math.random() * 75000;
@@ -259,12 +245,6 @@ export default function App() {
     const cleanInput = input.trim();
     if (!cleanInput) return;
 
-    if (isRemoteMode) {
-      await sendRemoteCommand(cleanInput);
-      setInput('');
-      return;
-    }
-
     await handleCommandExecution(cleanInput);
     setInput('');
   };
@@ -308,78 +288,6 @@ export default function App() {
 
   const themeClass = getTerminalTheme();
 
-  // If in Remote Mode, show a simplified UI
-  if (isRemoteMode) {
-    return (
-      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-6 font-mono text-phosphor-green selection:bg-phosphor-green selection:text-black relative">
-        {/* Remote Grid Background */}
-        <div className="absolute inset-0 opacity-5 pointer-events-none bg-[linear-gradient(rgba(0,255,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,0,0.1)_1px,transparent_1px)] bg-[size:40px_40px]" />
-        
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-lg bg-black/60 border border-phosphor-green/30 rounded-xl p-10 backdrop-blur-2xl shadow-[0_0_80px_rgba(0,255,0,0.15)] relative z-10"
-        >
-          <div className="flex items-center justify-between mb-10">
-            <div className="flex items-center gap-4">
-              <div className="w-2 h-2 rounded-full bg-phosphor-green animate-ping" />
-              <div className="flex items-center gap-2 opacity-60">
-                <Radio size={14} />
-                <h1 className="text-[10px] uppercase tracking-[0.4em] font-bold">Uplink.Online</h1>
-              </div>
-            </div>
-            <div className="text-[10px] opacity-30 uppercase tracking-widest font-bold">
-              Latency: 12ms
-            </div>
-          </div>
-          
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="relative group">
-              <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-1 h-0 group-focus-within:h-8 bg-phosphor-green transition-all" />
-              <input 
-                type="text"
-                autoFocus
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                className="w-full bg-transparent border-b border-phosphor-green/20 focus:border-phosphor-green/80 outline-none py-6 text-2xl uppercase tracking-[0.2em] transition-all placeholder:text-phosphor-green/10"
-                placeholder="INPUT_SEQUENCE"
-              />
-              <div className="flex justify-between mt-2">
-                <span className="text-[8px] opacity-40 uppercase tracking-widest">Protocol: Encrypted_Tunnel</span>
-                <span className="text-[8px] opacity-40 uppercase tracking-widest">Buffer: Clear</span>
-              </div>
-            </div>
-            
-            <button 
-              type="submit"
-              className="w-full group relative overflow-hidden bg-phosphor-green/5 hover:bg-phosphor-green/10 border border-phosphor-green/20 text-phosphor-green py-4 rounded-md uppercase tracking-[0.5em] text-[11px] font-bold transition-all"
-            >
-              <span className="relative z-10">Transmit_Direct</span>
-              <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-phosphor-green/10 to-transparent" />
-            </button>
-          </form>
-
-          <div className="mt-12 flex flex-col items-center gap-4">
-             <div className="w-full h-[1px] bg-white/5" />
-             <button 
-              onClick={() => setIsRemoteMode(false)}
-              className="group flex items-center gap-2 text-[9px] uppercase tracking-widest text-white/30 hover:text-white/80 transition-all"
-            >
-              <Terminal size={12} className="group-hover:rotate-12 transition-transform" />
-              Close_Remote_Session
-            </button>
-          </div>
-        </motion.div>
-
-        {/* Status Bar Footer */}
-        <div className="fixed bottom-6 left-6 right-6 flex justify-between items-center opacity-20 text-[8px] uppercase tracking-[0.3em] font-bold">
-          <span>Signal_Strength: 98%</span>
-          <span>Core_Ready</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div 
       onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
@@ -391,15 +299,6 @@ export default function App() {
 
       {/* Auth UI */}
       <div className={`fixed top-4 right-4 z-[60] flex items-center gap-4 transition-opacity duration-300 ${isFullscreen ? 'opacity-0 hover:opacity-100' : ''}`}>
-        {user && (
-          <button 
-            onClick={() => setIsRemoteMode(true)}
-            className="flex items-center gap-2 text-[8px] uppercase tracking-widest text-[#00FF00]/40 hover:text-[#00FF00] transition-colors border border-[#00FF00]/10 px-2 py-1 rounded-sm"
-          >
-            <Radio size={10} />
-            Remote_Uplink
-          </button>
-        )}
         {user ? (
           <button 
             onClick={signOut}
@@ -415,19 +314,15 @@ export default function App() {
             RESTORE_IDENTITY_LINK
           </button>
         )}
-      </div>
-
-      {/* Main Container */}
-      <div className="relative group flex flex-col items-center gap-0 w-full h-screen max-w-full">
+      </div>        {/* Main Container */}
+      <div className="relative flex flex-col items-center w-full h-screen max-w-full">
         {/* Character Box */}
         <div 
-          className="relative group/box flex-1 w-full flex items-center justify-center p-0"
+          className="relative flex-1 w-full flex items-center justify-center p-0"
         >
-          {/* Decorative artifacts removed for performance */}
-          
           <div 
             ref={containerRef}
-            className={`relative flex flex-col items-center transition-all duration-300 overflow-hidden ${isFullscreen ? 'fixed inset-0 w-screen h-screen z-40 bg-black border-none rounded-none' : 'w-full h-full bg-transparent md:bg-black/80 border-none md:border md:border-white/5 rounded-none px-0 py-0 backdrop-blur-sm shadow-none'}`}
+            className={`relative flex flex-col items-center transition-all duration-300 overflow-hidden ${isFullscreen ? 'fixed inset-0 w-screen h-screen z-40 bg-black' : 'w-full h-full bg-transparent md:bg-black/80'}`}
           >
             {/* Fullscreen Toggle Button */}
             <button 
@@ -438,124 +333,82 @@ export default function App() {
               {isFullscreen ? <Minimize2 size={24} /> : <Maximize2 size={18} />}
             </button>
  
-          <pre 
-            className={`${themeClass} text-[2.2vh] sm:text-[2.4vh] md:text-[2.8vh] leading-none tracking-tighter flex flex-col items-center justify-center select-none transition-all duration-200 overflow-hidden font-mono w-full h-full flex-1 relative`}
-          >
-            {(() => {
-              const lines = frame.split('\n');
-              
-              return lines.map((line, i) => {
-                const isHud = (i >= 26); 
-                const isSpecialRow = i >= 32;
+            <pre 
+              className={`${themeClass} text-[2.2vh] sm:text-[2.4vh] md:text-[2.8vh] leading-none tracking-tighter flex flex-col items-center justify-center select-none transition-all duration-200 overflow-hidden font-mono w-full h-full flex-1 relative`}
+            >
+              {(() => {
+                const lines = frame.split('\n');
                 
-                return (
-                  <div 
-                    key={i} 
-                    className={`flex justify-center w-full overflow-visible ${isHud ? 'py-[0.5vh]' : 'py-[0.01vh]'} ${isSpecialRow ? 'relative' : ''}`}
-                    data-entity={isHud ? 'hud' : isSpecialRow ? 'special-row' : 'character'}
-                  >
-                    <span 
-                      className={`whitespace-pre inline-block transition-all duration-300 ${isHud ? 'font-bold opacity-100' : 'opacity-[0.85]'}`} 
-                      style={{ 
-                        transform: isHud ? 'scale(2.2, 1.7)' : 'scale(1.2, 1.1)', 
-                        transformOrigin: 'center'
-                      }}
+                return lines.map((line, i) => {
+                  const isHud = (i >= 26); 
+                  const isSpecialRow = i >= 32;
+                  
+                  return (
+                    <div 
+                      key={i} 
+                      className={`flex justify-center w-full overflow-visible ${isHud ? 'py-[0.5vh]' : 'py-[0.01vh]'} ${isSpecialRow ? 'relative' : ''}`}
+                      data-entity={isHud ? 'hud' : isSpecialRow ? 'special-row' : 'character'}
                     >
-                      {line}
-                    </span>
-                  </div>
-                );
-              });
-            })()}
-          </pre>
+                      <span 
+                        className={`whitespace-pre inline-block transition-all duration-300 ${isHud ? 'font-bold opacity-100' : 'opacity-[0.85]'}`} 
+                        style={{ 
+                          transform: isHud ? 'scale(2.2, 1.7)' : 'scale(1.2, 1.1)', 
+                          transformOrigin: 'center'
+                        }}
+                      >
+                        {line}
+                      </span>
+                    </div>
+                  );
+                });
+              })()}
+            </pre>
+
+            {/* Global Input Bar - Moved inside containerRef for fullscreen visibility */}
+            <div className={`transition-all duration-500 z-[100] pb-8 ${isFullscreen ? 'fixed bottom-8 left-1/2 -translate-x-1/2 w-[80vw] max-w-[600px]' : 'w-[400px] mt-4 mb-4'}`}>
+              <motion.div 
+                animate={{ 
+                  y: [0, -2, 0],
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+                className="flex items-center gap-4 bg-black/40 border border-white/10 rounded-lg px-5 py-3 opacity-60 hover:opacity-100 focus-within:opacity-100 focus-within:bg-black/80 transition-all duration-300 backdrop-blur-xl relative overflow-hidden"
+              >
+                <form onSubmit={handleSubmit} className="flex-1 flex items-center gap-2">
+                  <span className={`${themeClass} text-[12px] opacity-60 font-bold tracking-widest`}>&gt;</span>
+                  <input 
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    disabled={isAiLoading}
+                    className={`${themeClass} flex-1 bg-transparent border-none outline-none text-[14px] uppercase font-bold placeholder-[#ffffff11] tracking-widest ${isAiLoading ? 'opacity-20 animate-pulse' : ''}`}
+                    placeholder={isAiLoading ? "PROCESSING..." : "ENTER_COMMAND"}
+                    autoFocus
+                  />
+                </form>
+                
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileUpload}
+                  className="hidden" 
+                  accept=".txt,.json,.md,.js,.ts"
+                />
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isAiLoading}
+                  className="text-white/20 hover:text-[#00FF00] transition-colors p-1"
+                  title="Upload data cluster"
+                >
+                  <Terminal size={16} />
+                </button>
+              </motion.div>
+            </div>
           </div>
         </div>
-
-        {/* Floating Input Dock (Separated) */}
-        {!isFullscreen && (
-          <motion.div 
-            animate={{ 
-              y: [0, -4, 0],
-            }}
-            transition={{
-              duration: 4,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-            className="w-[400px] flex items-center gap-4 bg-black/40 border border-white/5 rounded-full px-4 py-2 opacity-60 hover:opacity-100 focus-within:opacity-100 transition-all duration-300 backdrop-blur-md relative overflow-hidden"
-          >
-            {/* Subtle Phosphor Line Underneath */}
-            <div 
-              className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-[1px] opacity-20 blur-[1px] transition-colors duration-500"
-              style={{ 
-                backgroundColor: state.emotion_state === 'attack' ? '#FF3300' : 
-                                state.color_mode === 'warm' ? '#FFCC00' :
-                                state.emotion_state === 'curious' ? '#00FFFF' :
-                                '#00FF00' 
-              }}
-            />
-
-            <form onSubmit={handleSubmit} className="flex-1 flex items-center gap-2">
-              <span className={`${themeClass} text-[10px] opacity-40 font-bold tracking-widest`}>&gt;</span>
-              <input 
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                disabled={isAiLoading}
-                className={`${themeClass} flex-1 bg-transparent border-none outline-none text-[11px] uppercase font-bold placeholder-[#ffffff11] tracking-widest ${isAiLoading ? 'opacity-20 animate-pulse' : ''}`}
-                placeholder={isAiLoading ? "SYS_WAIT" : "GLITCH_CMD..."}
-                autoFocus
-              />
-            </form>
-            
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileUpload}
-              className="hidden" 
-              accept=".txt,.json,.md,.js,.ts"
-            />
-            <button 
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isAiLoading}
-              className="text-white/10 hover:text-[#00FF00] transition-colors p-1"
-              title="Upload data cluster (file)"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-              </svg>
-            </button>
-          </motion.div>
-        )}
-        
-        {/* Fullscreen Input (Fixed overlay) */}
-        {isFullscreen && (
-          <motion.div 
-            initial={{ y: 50, opacity: 0 }}
-            animate={{ 
-              y: [0, -6, 0],
-              opacity: 1
-            }}
-            transition={{
-              y: { duration: 5, repeat: Infinity, ease: "easeInOut" },
-              opacity: { duration: 0.5 }
-            }}
-            className="fixed bottom-12 left-1/2 -translate-x-1/2 w-[90vw] max-w-[600px] flex items-center gap-4 bg-black/95 border border-white/20 rounded-md px-6 py-4 opacity-40 hover:opacity-100 focus-within:opacity-100 transition-all duration-500 z-50 backdrop-blur-2xl shadow-[0_0_40px_rgba(255,255,255,0.1)]"
-          >
-             <form onSubmit={handleSubmit} className="flex-1 flex items-center gap-3">
-              <span className={`${themeClass} text-[14px] opacity-60 font-bold tracking-widest animate-pulse`}>CMD_</span>
-              <input 
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                disabled={isAiLoading}
-                className={`${themeClass} flex-1 bg-transparent border-none outline-none text-[18px] uppercase font-bold placeholder-[#ffffff22] tracking-widest ${isAiLoading ? 'opacity-20 animate-pulse' : ''}`}
-                placeholder={isAiLoading ? "..." : "TYPE_COMMAND"}
-                autoFocus
-              />
-            </form>
-          </motion.div>
-        )}
       </div>
 
       {/* Background Ambience */}
