@@ -364,8 +364,8 @@ export default function App() {
               })()}
             </pre>
 
-            {/* Global Input Bar - Moved inside containerRef for fullscreen visibility */}
-            <div className={`transition-all duration-500 z-[100] pb-8 ${isFullscreen ? 'fixed bottom-8 left-1/2 -translate-x-1/2 w-[80vw] max-w-[600px]' : 'w-[400px] mt-4 mb-4'}`}>
+            {/* Global Input Bar - Small and moved to corner to avoid overlapping HUD */}
+            <div className={`transition-all duration-500 z-[100] absolute bottom-4 right-4 sm:bottom-6 sm:right-6 w-[calc(100%-2rem)] sm:w-[320px]`}>
               <motion.div 
                 animate={{ 
                   y: [0, -2, 0],
@@ -375,17 +375,17 @@ export default function App() {
                   repeat: Infinity,
                   ease: "easeInOut"
                 }}
-                className="flex items-center gap-4 bg-black/40 border border-white/10 rounded-lg px-5 py-3 opacity-60 hover:opacity-100 focus-within:opacity-100 focus-within:bg-black/80 transition-all duration-300 backdrop-blur-xl relative overflow-hidden"
+                className="flex items-center gap-3 bg-black/40 border border-white/10 rounded-full px-4 py-2 opacity-40 hover:opacity-100 focus-within:opacity-100 focus-within:bg-black/80 focus-within:border-white/30 transition-all duration-300 backdrop-blur-md relative overflow-hidden"
               >
                 <form onSubmit={handleSubmit} className="flex-1 flex items-center gap-2">
-                  <span className={`${themeClass} text-[12px] opacity-60 font-bold tracking-widest`}>&gt;</span>
+                  <span className={`${themeClass} text-[10px] opacity-60 font-bold tracking-widest`}>&gt;</span>
                   <input 
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     disabled={isAiLoading}
-                    className={`${themeClass} flex-1 bg-transparent border-none outline-none text-[14px] uppercase font-bold placeholder-[#ffffff11] tracking-widest ${isAiLoading ? 'opacity-20 animate-pulse' : ''}`}
-                    placeholder={isAiLoading ? "PROCESSING..." : "ENTER_COMMAND"}
+                    className={`${themeClass} flex-1 bg-transparent border-none outline-none text-[12px] uppercase font-bold placeholder-[#ffffff33] tracking-widest ${isAiLoading ? 'opacity-20 animate-pulse' : ''}`}
+                    placeholder={isAiLoading ? "SYS..." : "CMD_"}
                     autoFocus
                   />
                 </form>
@@ -403,7 +403,7 @@ export default function App() {
                   className="text-white/20 hover:text-[#00FF00] transition-colors p-1"
                   title="Upload data cluster"
                 >
-                  <Terminal size={16} />
+                  <Terminal size={14} />
                 </button>
               </motion.div>
             </div>
