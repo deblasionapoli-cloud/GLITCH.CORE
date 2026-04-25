@@ -17,10 +17,12 @@ export function renderFrame(state: State): string {
   const isGlitched = emotion_state === 'glitch';
 
   // 1. Procedural Background Layer (Data Stream)
-  const bgWidth = 80;
+  // Increased buffer width to ensure full frame and consistent 2x scaling
+  const bgWidth = 110;
   const bgHeight = 32; // Increased to fill vertical space better
   const generateBGLine = (phase: number, row: number) => {
     let line = "";
+    // Horizontal scale 2x by doubling characters: iterate half width and append twice
     const halfWidth = Math.floor(bgWidth / 2);
     for (let i = 0; i < halfWidth; i++) {
        // Deterministic noise based on phase, row and col
@@ -30,9 +32,9 @@ export function renderFrame(state: State): string {
        const chars = [" ", " ", " ", " ", ".", "·", " ", " "];
        const charIdx = Math.floor(val * chars.length) % chars.length;
        const c = chars[charIdx];
-       line += c + c; // SCALE 2x
+       line += c + c; 
     }
-    return line;
+    return line.padEnd(bgWidth, " ");
   };
 
   // 2. High-Fidelity Blinking & Jitter
