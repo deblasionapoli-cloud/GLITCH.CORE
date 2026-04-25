@@ -18,10 +18,10 @@ export function updateState(currentState: State, events: Event[]): State {
   // Update animation phase (deterministic loop)
   nextState.animation_phase = (nextState.animation_phase + 1) % 1000;
 
-  // Initiative logic: every ~2 minutes (1200 ticks at 10Hz) to save quota
-  if (nextState.animation_phase % 1200 === 0 && !nextState.is_thinking && nextState.speech_queue.length <= 5) {
-    handleInitiative(nextState);
-  }
+  // Initiative logic: disabled on server to allow client-side Llama/Gemini auth model
+  // if (nextState.animation_phase % 1200 === 0 && !nextState.is_thinking && nextState.speech_queue.length <= 5) {
+  //   handleInitiative(nextState);
+  // }
 
   // Slowly decay intensity
   if (nextState.intensity > 1) {
@@ -128,10 +128,10 @@ export function updateState(currentState: State, events: Event[]): State {
         nextState.intensity += 50;
       }
       
-      // Handle AI Speech with context (throttled)
-      if (!nextState.is_thinking) {
-        handleAiResponse(nextState, event.payload);
-      }
+      // Handle AI Speech with context (throttled) - DISABLED on server to prevent duplicates
+      // if (!nextState.is_thinking) {
+      //   handleAiResponse(nextState, event.payload);
+      // }
     }
   }
 
@@ -229,11 +229,32 @@ function pushToQueue(state: State, text: string) {
 }
 
 function processSpeechTags(state: State, rawSpeech: string) {
-  // Parse ASCII tags (robust to unclosed tags)
+  // Parse ASCII tags
   const asciiMatch = rawSpeech.match(/\[ASCII\]([\s\S]*?)(?:\[\/ASCII\]|$)/i);
   if (asciiMatch && asciiMatch[1].trim()) {
     state.custom_sprite = asciiMatch[1].trim();
     state.emotion_state = 'glitch';
+  }
+
+  // Parse Physical tags directly (Enables tags via SSH/Remote)
+  const formMatch = rawSpeech.match(/\[FORM:\s*([^\]]+)\]/i);
+  if (formMatch) {
+    const fn = formMatch[1].trim().toLowerCase();
+    const valid = ['blob', 'eye', 'hardware', 'ditto', 'spiky'];
+    if (valid.includes(fn)) state.visual_state = fn as any;
+  }
+
+  const stateMatch = rawSpeech.match(/\[STATE:\s*([^\]]+)\]/i);
+  if (stateMatch) {
+    const sn = stateMatch[1].trim().toLowerCase();
+    const valid = ['glitch', 'attack', 'alert', 'calm'];
+    if (valid.includes(sn)) state.emotion_state = sn as any;
+  }
+
+  const intensityMatch = rawSpeech.match(/\[INTENSITY:\s*(\d+)\]/i);
+  if (intensityMatch) {
+    const val = parseInt(intensityMatch[1]);
+    if (!isNaN(val)) state.intensity = Math.min(100, Math.max(0, val));
   }
 
   // Clean the speech for display (strip all tags before pushing to terminal queue)

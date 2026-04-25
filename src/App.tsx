@@ -453,7 +453,7 @@ export default function App() {
             </button>
 
             <pre 
-              className={`${themeClass} text-[3.8vh] md:text-[4vh] leading-[1.0] tracking-tighter whitespace-pre flex flex-col items-center justify-center select-none transition-all duration-200 overflow-hidden font-mono w-full h-full flex-1`}
+              className={`${themeClass} text-[3.2vh] md:text-[3.5vh] leading-[1.0] tracking-tighter whitespace-pre flex flex-col items-center justify-center select-none transition-all duration-200 overflow-hidden font-mono w-full h-full flex-1 max-h-screen`}
             >
               {frame.split('\n').map((line, i) => (
                 <div key={i} className="flex justify-center w-full">
