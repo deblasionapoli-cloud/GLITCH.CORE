@@ -68,7 +68,6 @@ export function renderFrame(state: State): string {
   }
 
   // 4. Sprite Components
-  let hatLogo = "[C]";
   let hatTop = "      .-----------------.      ";
   let hatMid = "     /      _______      \\     ";
 
@@ -101,8 +100,9 @@ export function renderFrame(state: State): string {
   // Raw Sprite Base
   const baseSprite = [
     hatTop, hatMid,
-    "    |      |       |      |    ",
-    `    |      |  ${hatLogo}  |      |    `,
+    "    |      |  __   |      |    ",
+    "    |      | / ')  |      |    ",
+    "    |      | \\__|  |      |    ",
     "    |      |_______|      |    ",
     "    |_____________________|    ",
     "    |=====================|    ",
