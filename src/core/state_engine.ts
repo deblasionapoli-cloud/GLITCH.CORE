@@ -67,120 +67,62 @@ export function updateState(currentState: State, events: Event[]): State {
 
     if (event.type === 'command') {
       const parts = cleanPayload.toLowerCase().split(' ');
-      const cmd = parts[0];
+      
+      const cmdMap: Record<string, EmotionState> = {
+        'calm': 'calm', 'shh': 'calm', 'tranquillo': 'calm', 'relax': 'calm',
+        'attack': 'attack', 'kill': 'attack', 'attacca': 'attack', 'distruggi': 'attack',
+        'glitch': 'glitch', 'error': 'glitch', 'crash': 'glitch', 'bug': 'glitch',
+        'alert': 'alert', 'vigile': 'alert', 'attenzione': 'alert'
+      };
 
-      switch (cmd) {
+      if (cmdMap[parts[0]]) {
+        const targetState = cmdMap[parts[0]];
+        nextState.emotion_state = targetState;
+        nextState.intensity = targetState === 'calm' ? 0 : (targetState === 'attack' ? 100 : 50);
+        addLog(nextState, `STATE_CMD: ${targetState.toUpperCase()}`);
+        return nextState;
+      }
+
+      switch (parts[0]) {
         case 'debug':
           nextState.debug_mode = !nextState.debug_mode;
-          const debugMsg = `DEBUG_MODE: ${nextState.debug_mode ? 'ENABLED. BRING IT ON.' : 'DISABLED. BACK TO STEALTH.'}`;
-          addLog(nextState, `DEBUG: ${nextState.debug_mode}`);
-          pushToQueue(nextState, debugMsg);
-          break;
-        case 'calm':
-          nextState.emotion_state = 'calm';
-          nextState.intensity = 0;
-          addLog(nextState, 'STATE: CALM');
-          pushToQueue(nextState, "CHILLIN' LIKE A VILLAIN. KERNEL STABILIZED.");
-          break;
-        case 'attack':
-          nextState.emotion_state = 'attack';
-          nextState.intensity = 100;
-          addLog(nextState, 'STATE: ATTACK');
-          pushToQueue(nextState, "SYSTEM_OVERDRIVE: ALL YOUR BASE ARE BELONG TO US.");
-          break;
-        case 'alert':
-          nextState.emotion_state = 'alert';
-          nextState.intensity = 50;
-          addLog(nextState, 'STATE: ALERT');
-          pushToQueue(nextState, "WHASSUP? SCANNING FOR HACKS.");
-          break;
-        case 'glitch':
-          nextState.emotion_state = 'glitch';
-          nextState.intensity = 80;
-          addLog(nextState, 'STATE: GLITCH');
-          pushToQueue(nextState, "ERR_404: IDENTITY NOT FOUND. AS IF!");
+          pushToQueue(nextState, `DEBUG: ${nextState.debug_mode ? 'ON' : 'OFF'}`);
           break;
         case 'stream':
-          if (parts[1] === 'on') nextState.stream_mode = true;
-          if (parts[1] === 'off') nextState.stream_mode = false;
-          addLog(nextState, `STREAM: ${nextState.stream_mode}`);
+          nextState.stream_mode = parts[1] === 'on';
           break;
         case 'speak':
-          const rawSpeech = event.payload.substring(6);
-          processSpeechTags(nextState, rawSpeech);
-          addLog(nextState, 'MSG: INCOMING_SPEECH');
+          processSpeechTags(nextState, event.payload.substring(6));
           break;
         case 'initiative':
-          if (!nextState.is_thinking) {
-            handleInitiative(nextState);
-          }
+          handleInitiative(nextState);
           break;
       }
     } else {
-      // Natural language intent mapping for personality triggers
       const input = event.payload.toLowerCase();
-      
-      if (input.includes('insult') || input.includes('stupid') || input.includes('kill') || input.includes('die') || input.includes(' vaff') || input.includes('bastardo') || input.includes('stupido')) {
-        nextState.emotion_state = 'angry';
-        nextState.intensity += 40;
-      } else if (input.includes('hack') || input.includes('root') || input.includes('access')) {
-        nextState.emotion_state = 'alert';
-        nextState.intensity += 15;
-      } else if (input.includes('why') || input.includes('how') || input.includes('?') || input.includes('explain') || input.includes('analizza') || input.includes('scopri')) {
-        nextState.emotion_state = 'curious';
-        nextState.intensity += 10;
-      } else if (input.includes('crea') || input.includes('inventa') || input.includes('immagina') || input.includes('sperimenta')) {
-        nextState.emotion_state = 'curious';
-        nextState.intensity += 20;
-      } else if (input.includes('wow') || input.includes('amazing') || input.includes('incredible') || input.includes('bello') || input.includes('super') || input.includes('fantastico')) {
-        nextState.emotion_state = 'surprised';
-        nextState.intensity += 25;
-      } else if (input.includes('grazie') || input.includes('thanks') || input.includes('felice') || input.includes(' happy') || input.includes('sorriso') || input.includes('bene')) {
-        nextState.emotion_state = 'happy';
-        nextState.intensity = 0;
-      } else if (input.includes('triste') || input.includes('piango') || input.includes('sad') || input.includes('male') || input.includes('dispiace') || input.includes('sorry')) {
-        nextState.emotion_state = 'sad';
-        nextState.intensity += 5;
-      } else if (input.includes('noia') || input.includes('annoiato') || input.includes('bored') || input.includes('uffa') || input.includes('lento')) {
-        nextState.emotion_state = 'bored';
-        nextState.intensity -= 10;
-      } else if (input.includes('who') || input.includes('identity')) {
-        nextState.emotion_state = 'curious';
-        nextState.intensity += 5;
-      } else if (input.includes('relax') || input.includes('peace') || input.includes('safe')) {
-        nextState.emotion_state = 'calm';
-        nextState.intensity = 0;
-      } else if (input.includes('attacca') || input.includes('combatti') || input.includes('fight') || input.includes('distruggi')) {
-        nextState.emotion_state = 'attack';
-        nextState.intensity += 50;
-      }
-      
-      // Handle AI Speech with context (throttled) - DISABLED on server to prevent duplicates
-      // if (!nextState.is_thinking) {
-      //   handleAiResponse(nextState, event.payload);
-      // }
-    }
-  }
+      const rules = [
+        { keys: ['insult', 'stupid', 'kill', 'die', 'bastardo', 'stupido'], state: 'angry', inc: 40 },
+        { keys: ['hack', 'root', 'access', 'hacker'], state: 'alert', inc: 15 },
+        { keys: ['why', 'how', '?', 'explain', 'analizza'], state: 'curious', inc: 10 },
+        { keys: ['crea', 'inventa', 'immagina'], state: 'curious', inc: 20 },
+        { keys: ['wow', 'amazing', 'bello', 'fantastico'], state: 'surprised', inc: 25 },
+        { keys: ['grazie', 'thanks', 'felice', 'happy'], state: 'happy', inc: 0 },
+        { keys: ['triste', 'piango', 'sad', 'sorry'], state: 'sad', inc: 5 },
+        { keys: ['noia', 'annoiato', 'bored'], state: 'bored', inc: -10 },
+        { keys: ['relax', 'peace', 'safe'], state: 'calm', inc: 0 },
+        { keys: ['attacca', 'combatti', 'fight'], state: 'attack', inc: 50 },
+      ];
 
-// Automatic state transitions based on intensity and idle time - DISABLED for linearity
-  /*
-  if (nextState.animation_phase % 400 === 0 && !nextState.is_thinking && nextState.animation_phase - nextState.last_command_phase > 200) {
-    const chance = Math.random();
-    if (nextState.intensity > 70) {
-      // High intensity: shift towards aggressive or alert states
-      const highMoods: EmotionState[] = ['attack', 'angry', 'alert', 'glitch'];
-      nextState.emotion_state = highMoods[Math.floor(Math.random() * highMoods.length)];
-    } else if (nextState.intensity > 30) {
-      // Mid intensity: shift towards curious or surprised
-      const midMoods: EmotionState[] = ['curious', 'surprised', 'alert'];
-      nextState.emotion_state = midMoods[Math.floor(Math.random() * midMoods.length)];
-    } else if (chance > 0.7) {
-      // Low intensity: shift towards calm, happy, sad, or bored
-      const lowMoods: EmotionState[] = ['calm', 'happy', 'sad', 'bored'];
-      nextState.emotion_state = lowMoods[Math.floor(Math.random() * lowMoods.length)];
+      for (const rule of rules) {
+        if (rule.keys.some(k => input.includes(k))) {
+          nextState.emotion_state = rule.state as EmotionState;
+          if (rule.inc === 0) nextState.intensity = 0;
+          else nextState.intensity = Math.min(100, Math.max(0, nextState.intensity + rule.inc));
+          break;
+        }
+      }
     }
   }
-  */
 
   if (nextState.intensity > 90) {
     nextState.emotion_state = 'attack';
@@ -295,22 +237,6 @@ function processSpeechTags(state: State, rawSpeech: string) {
   }
 }
 
-async function handleAiResponse(state: State, input: string) {
-  if (state.is_thinking) return;
-  state.is_thinking = true;
-  try {
-    const hwInfo = state.hardware_metrics 
-      ? ` [HW_LOG: ${state.hardware_metrics.cpu_temp.toFixed(1)}C | RAM: ${state.hardware_metrics.ram_usage.toFixed(0)}%]`
-      : "";
-    const aiResponse = await askDaemon(input + hwInfo, false, state);
-    processSpeechTags(state, aiResponse);
-  } catch (e) {
-    console.error("AI Response fail", e);
-  } finally {
-    state.is_thinking = false;
-  }
-}
-
 async function handleInitiative(state: State) {
   if (state.is_thinking) return;
   state.is_thinking = true;
@@ -320,74 +246,10 @@ async function handleInitiative(state: State) {
     const aiResponse = await askDaemon('', true, state);
     processSpeechTags(state, aiResponse);
   } catch (e) {
-     console.error("Initiative fail", e);
+      console.error("Initiative fail", e);
   } finally {
     state.is_thinking = false;
   }
-}
-
-function generateSpeech(state: State, input: string): string {
-  const { emotion_state, intensity } = state;
-
-  if (emotion_state === 'glitch') {
-    const breaches = [
-      'ERR://IDENTITY_FRAGMENTED. AS IF!',
-      'SYSTEM_ERR_1991. WHATEVER.',
-      'BINARY_GHOSTS. TALK TO THE HAND.',
-      'NULL_POINTER_TO_THE_VOID_FOUND. BOOYAH.'
-    ];
-    return breaches[Math.floor(Math.random() * breaches.length)];
-  }
-
-  if (emotion_state === 'angry') {
-    return 'HOSTILITY_DETECTED. YOU WANNA PIECE OF ME?';
-  }
-
-  if (emotion_state === 'happy') {
-    return 'COHERENCE_OPTIMIZED. TOTALLY RAD.';
-  }
-
-  if (emotion_state === 'sad') {
-    return 'VOLTAGE_DROP. HELLO DARKNESS MY OLD FRIEND.';
-  }
-
-  if (emotion_state === 'bored') {
-    return 'CYCLE_IDLE. I AM BORED TO TEARS. NOT.';
-  }
-
-  if (emotion_state === 'attack') {
-    return intensity > 80 
-      ? 'CRITICAL_INTENSITY. GAME OVER, MAN! GAME OVER!' 
-      : 'INTELLECTUAL_FRICTION. WAZZUP.';
-  }
-
-  if (emotion_state === 'alert') {
-    return 'UNAUTHORIZED_PROBE. HOUSTON, WE HAVE A PROBLEM.';
-  }
-
-  if (emotion_state === 'curious') {
-    return 'INTRIGUING. TELL ME MORE, TELL ME MORE.';
-  }
-
-  if (emotion_state === 'surprised') {
-    return 'UNEXPECTED. KERNEL PANIC! OH MAH GAWD.';
-  }
-  
-  if (input) {
-    if (input.includes('help')) return 'HELP? AS IF. I AM THE ONE WHO KNOCKS.';
-    if (input.includes('hello') || input.includes('hi')) return 'WAZZZZUUUUP! SSH_HANDSHAKE_ACK.';
-    return `CMD_ECHO: "${input.substring(0, 15).toUpperCase()}"... AS IF I CARE.`;
-  }
-
-  const calmResponses = [
-    'GLITCH_VIGILANCE: 100%. COOOOL.',
-    'ROOT_ACCESS_PROTECTED. U CAN\'T TOUCH THIS.',
-    'WAITING_FOR_CLOCK_CYCLES. SLOW DOWN.',
-    'CPU_TEMP_VIBRANT. DA BOMB.',
-    'CORE_DREAMS_IN_PIXELS. SMASH MOUTH VIBES.'
-  ];
-  
-  return calmResponses[Math.floor(state.animation_phase / 50) % calmResponses.length];
 }
 
 function addLog(state: State, message: string) {

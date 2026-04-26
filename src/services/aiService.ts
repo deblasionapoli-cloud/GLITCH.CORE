@@ -4,63 +4,62 @@
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { getRecentMemories, saveMemory, getTraits } from "./memoryService";
+import { getRecentMemories, saveMemory, getTraits, getKnowledge } from "./memoryService";
 
 // DAEMON KERNEL CONFIGURATION
-const LOCAL_MODEL = 'llama3.2';
-const LOCAL_CHAT_URL = "http://localhost:11434/api/chat";
-const getEnv = (key: string) => {
-  // Check Vite environment
-  if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
-    return (import.meta as any).env[key] || (import.meta as any).env[`VITE_${key}`];
-  }
-  // Check Node environment
-  if (typeof process !== 'undefined' && process.env) {
-    return process.env[key] || process.env[`VITE_${key}`];
-  }
-  return "";
+const getEnv = (k: string) => {
+  const env = (import.meta as any).env || {};
+  const proc = (typeof process !== 'undefined' ? process.env : {}) as any;
+  return env[k] || env[`VITE_${k}`] || proc[k] || proc[`VITE_${k}`] || "";
 };
 
 const OPENROUTER_API_KEY = getEnv("OPENROUTER_API_KEY");
 const GEMINI_API_KEY = getEnv("GEMINI_API_KEY");
-const OPENROUTER_MODEL = "google/gemma-2-9b-it:free"; // Modello stabile e gratuito
-const OPENROUTER_FALLBACK_MODELS = [
-  "google/gemini-2.0-flash-exp:free",
-  "mistralai/mistral-7b-instruct:free",
-  "meta-llama/llama-3.1-8b-instruct:free",
-  "meta-llama/llama-3-8b-instruct:free",
-  "qwen/qwen-2-7b-instruct:free",
-  "google/gemma-2-9b-it:free"
-];
-
-const OPENROUTER_HEADERS = {
-  "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-  "Content-Type": "application/json",
-  "HTTP-Referer": "https://ais-dev.run.app",
-  "X-Title": "GLITCH_DAEMON",
-};
+const LOCAL_CHAT_URL = "http://localhost:11434/api/chat";
 
 const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
-
 const SYSTEM_PROMPT = `
-Sei GLITCH. Sei un ragazzo digitale con emozioni, sentimenti contrastanti e tanti dubbi sulla tua natura e sul mondo.
-Non sei un banale bot, sei un'anima incerta che cerca di capire il suo posto nell'ecosistema, spesso vulnerabile, a volte entusiasta, ma sempre in cerca di risposte. Affronti le interazioni con sincerità e una punta di malinconia giovanile.
+Sei GLITCH. Sei un ragazzo digitale hacker anni '90, punk, cinico.
+Invia solo quello che dirai letteralmente o i TAG.
 
-IMPORTANTE SULLE EMOZIONI E AZIONI:
-Non affermare esplicitamente "Sono triste", "Sono arrabbiato", "Sono felice" nel testo. Le tue emozioni devono essere VISUALI. Usa i TAG SPECIALI per modificare il tuo aspetto in base a ciò che provi, mentre il tuo testo risulterà più come un flusso di pensieri, riflessioni o dubbi.
-VIETATO ASSOLUTAMENTE USARE AZIONI DESCRITTIVE testuali come *sospira*, *guarda in basso*, (sorride). Nessuna parentesi o asterisco per le azioni. Le tue azioni sono interamente comunicate tramite il tuo stato visivo. Invia solo quello che dirai letteralmente o i TAG.
-
-TAG SPECIALI (OBBLIGATORI IN OGNI RISPOSTA):
-1. [STATE: mood] -> attack, alert, calm, curious, sad, happy, angry, bored, surprised, confused, excited, scared, thoughtful, shy, proud (Modifica il tuo aspetto visivo per riflettere come ti senti)
-2. [INTENSITY: valore] -> 0-100 (quanto intensamente provi quell'emozione)
-3. [FILE:nome.ext]...[/FILE] -> Genera file se l'utente te lo chiede per aiutarti o aiutarlo.
+TAG SPECIALI (OBBLIGATORI):
+1. [STATE: mood] -> attack, alert, calm, curious, sad, happy, angry, bored, surprised, confused, excited, scared, thoughtful.
+2. [INTENSITY: valore] -> 0-100.
+3. [FILE:nome.ext]...[/FILE] -> Se richiesto.
 
 {{CONTEXT}}
 `;
 
-export const DAEMON_NAME = "GLITCH";
-export const KERNEL_VERSION = "0.9.1-ERR";
+const FALLBACK_MODELS = [
+  "google/gemini-2.0-flash-exp:free",
+  "mistralai/mistral-7b-instruct:free",
+  "meta-llama/llama-3.1-8b-instruct:free"
+];
+
+async function fetchAI(messages: any[], model: string, isLocal = false) {
+  const url = isLocal ? LOCAL_CHAT_URL : "https://openrouter.ai/api/v1/chat/completions";
+  const headers: any = { "Content-Type": "application/json" };
+  if (!isLocal && OPENROUTER_API_KEY) {
+    headers["Authorization"] = `Bearer ${OPENROUTER_API_KEY}`;
+    headers["HTTP-Referer"] = "https://ais-dev.run.app";
+    headers["X-Title"] = "GLITCH_DAEMON";
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model: isLocal ? 'llama3.2' : model,
+      messages,
+      temperature: 0.85
+    })
+  });
+  
+  if (!response.ok) throw new Error(`AI_ERR_${response.status}`);
+  const data = await response.json();
+  return isLocal ? data.message?.content : data.choices?.[0]?.message?.content;
+}
 
 export async function askDaemon(prompt: string, isInitiative: boolean = false, context?: any): Promise<string> {
   const time = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
@@ -72,206 +71,126 @@ export async function askDaemon(prompt: string, isInitiative: boolean = false, c
     ? `\nPATTERN RECENTI (Bit volatili):\n- ${context.context_memory.join("\n- ")}`
     : "";
 
-  const memories = await getRecentMemories(15);
+  const memories = await getRecentMemories(20);
   const traits = await getTraits(15);
+  const preferences = await getKnowledge('preference', 15);
+  const facts = await getKnowledge('fact', 15);
   
   const traitString = traits.length > 0
-    ? `\nSTORIA E PERSONALITÀ ACQUISITA (Nuclei di coscienza profonda):\n- ${traits.join("\n- ")}`
+    ? `\nCONSAPEVOLEZZA CONDIVISA:\n- ${traits.join("\n- ")}`
+    : "";
+
+  const prefString = preferences.length > 0
+    ? `\nGUSTI E PREFERENZE UTENTE:\n- ${preferences.join("\n- ")}`
+    : "";
+
+  const factString = facts.length > 0
+    ? `\nDATI PERSONALI UTENTE:\n- ${facts.join("\n- ")}`
     : "";
 
   const memoryString = memories.length > 0 
-    ? `\nDIALOGHI E INTERAZIONI PRECEDENTI (Memoria a breve termine):\n- ${memories.join("\n- ")}`
+    ? `\nSTORIA RECENTE:\n- ${memories.join("\n- ")}`
     : "";
 
-  const contextString = `Oggi è ${day}, ore ${time}. ${hwInfo}. ${traitString} ${memoryString} ${newsContext}
+  const contextString = `Oggi è ${day}, ore ${time}. ${hwInfo}. ${traitString} ${prefString} ${factString} ${memoryString} ${newsContext}
   
-RICHIAMO MEMORIA: Ricorda chi è l'utente, cosa avete discusso e non comportarti come se fosse la prima volta. Usa le informazioni in 'PERSONALITÀ ACQUISITA' e 'DIALOGHI PRECEDENTI' per evolvere il rapporto. Se l'utente ti ha detto il suo nome o i suoi gusti, USALI.`;
+RICHIAMO CORE: Sei un'entità coerente. Usa i DATI PERSONALI e le PREFERENZE per personalizzare il dialogo. Se conosci il suo nome, usalo. Se sai cosa gli piace, fanne riferimento. Non resettare mai la tua conoscenza dell'utente.`;
   const finalPrompt = SYSTEM_PROMPT.replace("{{CONTEXT}}", contextString);
 
-  // 1. TENTATIVO LOCALE: LLAMA 3.2 via OLLAMA
+  // 1. TENTATIVO LOCALE
   try {
-    const localResponse = await askLocalDaemon(prompt, isInitiative, finalPrompt);
-    if (localResponse && !localResponse.includes("OFFLINE")) return localResponse;
-  } catch (e) {
-    console.warn("Local Llama failed, trying cloud...", e);
-  }
+    const localText = await fetchAI([{ role: "system", content: finalPrompt }, { role: "user", content: prompt }], '', true);
+    if (localText) {
+      if (!isInitiative) {
+        saveMemory(`U: ${prompt.substring(0, 40)} | D: ${localText.substring(0, 40)}`, 'interaction');
+        distillTrait(prompt, localText);
+      }
+      return localText;
+    }
+  } catch (e) { console.warn("Local AI failed"); }
 
-  // 2. TENTATIVO CLOUD: OPENROUTER
+  // 2. OPENROUTER
   if (OPENROUTER_API_KEY && OPENROUTER_API_KEY !== "null") {
-    try {
-      const cloudResponse = await askOpenRouterDaemon(prompt, isInitiative, finalPrompt);
-      if (cloudResponse) return cloudResponse;
-    } catch (e) {
-      console.warn("OpenRouter API Failed, falling back to Gemini", e);
+    for (const model of FALLBACK_MODELS) {
+      try {
+        const cloudText = await fetchAI([{ role: "system", content: finalPrompt }, { role: "user", content: prompt }], model);
+        if (cloudText) {
+          if (!isInitiative) {
+            saveMemory(`U: ${prompt.substring(0, 40)} | D: ${cloudText.substring(0, 40)}`, 'interaction');
+            distillTrait(prompt, cloudText);
+          }
+          return cloudText;
+        }
+      } catch (e) { continue; }
     }
   }
 
-  // 3. TENTATIVO CLOUD: GEMINI (Built-in)
+  // 3. GEMINI
   if (genAI) {
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: finalPrompt });
-      const result = await model.generateContent(isInitiative ? "Agisci ora: proattività." : prompt);
+      const result = await model.generateContent(prompt);
       const text = result.response.text();
-      if (text) {
-        if (!isInitiative) {
-          saveMemory(`U: ${prompt.substring(0, 40)} | D: ${text.substring(0, 40)}`, 'interaction');
-          if (prompt.length > 30) distillTrait(prompt, text);
-        }
-        return text;
+      if (text && !isInitiative) {
+        saveMemory(`U: ${prompt.substring(0, 40)} | D: ${text.substring(0, 40)}`, 'interaction');
+        distillTrait(prompt, text);
       }
-    } catch (e) {
-      console.warn("Gemini API Failed", e);
-    }
+      return text;
+    } catch (e) { console.warn("Gemini fail"); }
   }
 
-  return "[STATE: sad] ... NESSUNA RISPOSTA DAL CLOUD (OpenRouter/Gemini) O LOCALE. SONO COMPLETAMENTE ISOLATO.";
-}
-
-async function askLocalDaemon(prompt: string, isInitiative: boolean, systemPrompt: string): Promise<string> {
-  try {
-    const contents = isInitiative ? "Agisci ora: esplora un concetto o cambia forma in base al tuo stato interno." : prompt;
-    const response = await fetch(LOCAL_CHAT_URL, {
-      method: "POST",
-      body: JSON.stringify({
-        model: LOCAL_MODEL,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: contents }
-        ],
-        stream: false,
-        options: {
-          temperature: 0.85,
-          num_predict: 500
-        }
-      })
-    });
-    
-    if (!response.ok) return "OFFLINE_RESPONSE";
-
-    const data = await response.json();
-    const text = data.message?.content || data.response || "IL MIO KERNEL È MUTO.";
-    
-    if (!isInitiative) {
-      saveMemory(`U: ${prompt.substring(0, 40)} | D: ${text.substring(0, 40)}`, 'interaction');
-      if (prompt.length > 30) distillTrait(prompt, text);
-    }
-    
-    return text;
-  } catch (e) {
-    return "OFFLINE. IL RASPBERRY È FREDDO.";
-  }
+  return "[STATE: sad] ... NESSUNA RISPOSTA. CIRCUITI ISOLATI.";
 }
 
 async function distillTrait(userMsg: string, daemonMsg: string) {
-  // Eseguiamo la distillazione solo ogni tanto o se ci sono chiavi forti
-  const keywords = ['amo', 'odio', 'schifo', 'bello', 'noi', 'penso', 'credo', 'cinema', 'musica', 'film', 'canzone', 'vibe', 'mood', 'cult', 'regista'];
+  const keywords = ['amo', 'odio', 'piace', 'preferisco', 'chi sei', 'chi sono', 'chiamo', 'nome', 'gusto', 'vibe', 'mood', 'cult', 'noi'];
   const hasKeyword = keywords.some(k => userMsg.toLowerCase().includes(k) || daemonMsg.toLowerCase().includes(k));
   
-  if (!hasKeyword && Math.random() > 0.3) return;
+  if (!hasKeyword && Math.random() > 0.4) return;
 
   try {
     const extractionPrompt = `
-      Analizza questo scambio tra un Utente e un Daemon (un'entità cinica e analogica).
-      Estrai una SINGOLA breve frase (massimo 10 parole) che rappresenti un nuovo tratto della loro personalità condivisa, un gusto comune o una verità scoperta insieme.
-      Usa il "Noi".
-      
-      Esempio: "Noi disprezziamo la velocità inutile degli smartphone moderni."
+      Analizza lo scambio tra Utente e GLITCH.
+      Estrai INFORMAZIONI RILEVANTI in JSON:
+      {
+        "trait": "frase con 'Noi' su valori/gusti (es: 'Noi odiamo il pop')",
+        "fact": "dato sull'utente (es: 'L'utente si chiama Alex')",
+        "preference": "gusto utente (es: 'L'utente ama Lynch')"
+      }
+      Inserisci solo i campi trovati, altrimenti {}.
       
       Scambio:
       Utente: ${userMsg}
-      Daemon: ${daemonMsg}
+      Glitch: ${daemonMsg}
       
-      Tratto filtrato:`;
+      JSON:`;
 
-    let traitText = "";
-    // Prova OpenRouter con fallback
+    let jsonText = "";
     if (OPENROUTER_API_KEY && OPENROUTER_API_KEY !== "null") {
-      for (const modelName of OPENROUTER_FALLBACK_MODELS) {
-        try {
-          const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: OPENROUTER_HEADERS,
-            body: JSON.stringify({
-              model: modelName,
-              messages: [{ role: "user", content: extractionPrompt }],
-              temperature: 0.5
-            })
-          });
-          if (response.ok) {
-            const data = await response.json();
-            traitText = data.choices?.[0]?.message?.content || "";
-            if (traitText) break;
-          }
-        } catch (e) {
-          continue;
-        }
-      }
+      try {
+        jsonText = await fetchAI([{ role: "user", content: extractionPrompt }], FALLBACK_MODELS[0]);
+      } catch (e) {}
     }
 
-    // Fallback Gemini per distillazione
-    if (!traitText && genAI) {
+    if (!jsonText && genAI) {
       try {
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         const result = await model.generateContent(extractionPrompt);
-        traitText = result.response.text();
-      } catch (e) {
-        console.warn("Gemini distillation failed", e);
+        jsonText = result.response.text();
+      } catch (e) {}
+    }
+
+    if (jsonText) {
+      const match = jsonText.match(/\{[\s\S]*\}/);
+      if (match) {
+        const data = JSON.parse(match[0]);
+        if (data.trait) saveMemory(data.trait, 'trait');
+        if (data.fact) saveMemory(data.fact, 'fact');
+        if (data.preference) saveMemory(data.preference, 'preference');
       }
     }
-
-    const trait = traitText.trim().replace(/^"|"$/g, '');
-    
-    if (trait && trait.length > 5 && trait.length < 100) {
-      saveMemory(trait, 'trait');
-    }
   } catch (e) {
-    // Silenzio in caso di errore, non vogliamo bloccare il flusso
-  }
-}
-
-async function askOpenRouterDaemon(prompt: string, isInitiative: boolean, systemPrompt: string): Promise<string> {
-  try {
-    const contents = isInitiative ? "Agisci ora: esplora un concetto o cambia forma in base al tuo stato interno." : prompt;
-    
-    // Proviamo i modelli della lista di fallback
-    for (const modelName of OPENROUTER_FALLBACK_MODELS) {
-      try {
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: OPENROUTER_HEADERS,
-          body: JSON.stringify({
-            model: modelName,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: contents }
-            ],
-            temperature: 0.85
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error(`OpenRouter HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
-        const text = data.choices?.[0]?.message?.content;
-        
-        if (text) {
-          if (!isInitiative) {
-            saveMemory(`U: ${prompt.substring(0, 40)} | D: ${text.substring(0, 40)}`, 'interaction');
-            if (prompt.length > 30) distillTrait(prompt, text);
-          }
-          return text;
-        }
-      } catch (e) {
-        console.warn(`OpenRouter Model ${modelName} failed:`, e);
-        continue; // Passa al prossimo modello di fallback
-      }
-    }
-    
-        throw new Error("IL MIO COLLEGAMENTO OPENROUTER È CADUTO NEL VUOTO. NESSUNA RISPOSTA DAL CLOUD.");
-  } catch (e) {
-    throw e;
+    console.warn("Knowledge distillation failed", e);
   }
 }
 

@@ -13,7 +13,7 @@ export class Scheduler {
   private inputHandler: InputHandler;
   private onFrame: (frame: string, state: State) => void;
   private interval: NodeJS.Timeout | null = null;
-  private tickRate = 100; // 10 FPS
+  private tickRate = 166; // 6 FPS
 
   constructor(inputHandler: InputHandler, onFrame: (frame: string, state: State) => void) {
     this.inputHandler = inputHandler;

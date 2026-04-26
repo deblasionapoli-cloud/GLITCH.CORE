@@ -77,11 +77,11 @@ export interface Memory {
   id?: string;
   content: string;
   timestamp: Timestamp;
-  category: string;
+  category: 'interaction' | 'trait' | 'fact' | 'preference' | 'emotion';
   userId: string;
 }
 
-export async function saveMemory(content: string, category: string = 'interaction') {
+export async function saveMemory(content: string, category: Memory['category'] = 'interaction') {
   if (!auth.currentUser) return;
   const path = 'memories';
   try {
@@ -96,14 +96,14 @@ export async function saveMemory(content: string, category: string = 'interactio
   }
 }
 
-export async function getRecentMemories(count: number = 5): Promise<string[]> {
+export async function getKnowledge(category: Memory['category'], count: number = 10): Promise<string[]> {
   if (!auth.currentUser) return [];
   const path = 'memories';
   try {
     const q = query(
       collection(db, path),
       where('userId', '==', auth.currentUser.uid),
-      where('category', '==', 'interaction'),
+      where('category', '==', category),
       orderBy('timestamp', 'desc'),
       limit(count)
     );
@@ -115,23 +115,12 @@ export async function getRecentMemories(count: number = 5): Promise<string[]> {
   }
 }
 
+export async function getRecentMemories(count: number = 5): Promise<string[]> {
+  return getKnowledge('interaction', count);
+}
+
 export async function getTraits(count: number = 10): Promise<string[]> {
-  if (!auth.currentUser) return [];
-  const path = 'memories';
-  try {
-    const q = query(
-      collection(db, path),
-      where('userId', '==', auth.currentUser.uid),
-      where('category', '==', 'trait'),
-      orderBy('timestamp', 'desc'),
-      limit(count)
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => (doc.data() as Memory).content);
-  } catch (e) {
-    handleFirestoreError(e, OperationType.GET, path);
-    return [];
-  }
+  return getKnowledge('trait', count);
 }
 
 // Remote Input Bridge

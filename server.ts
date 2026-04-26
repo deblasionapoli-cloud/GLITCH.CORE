@@ -43,7 +43,7 @@ async function startServer() {
   setInterval(() => {
     globalState = updateState(globalState, []); // Just tick animation
     io.emit('state_update', globalState);
-  }, 333); // 3 FPS
+  }, 166); // 6 FPS
 
   io.on('connection', (socket) => {
     console.log('User connected to GLITCH:', socket.id);

@@ -145,6 +145,7 @@ export default function App() {
       .replace(/\[FILE:\s*[^\]]+\][\s\S]*?\[\/FILE\]/gi, '')
       .replace(/\[STATE:\s*[^\]]+\]/gi, '')
       .replace(/\[INTENSITY:\s*[^\]]+\]/gi, '')
+      .replace(/\[MOOD:\s*[^\]]+\]/gi, '')
       .replace(/\*.*?\*/g, '')
       .replace(/\s+/g, ' ')
       .trim();
@@ -160,52 +161,26 @@ export default function App() {
 
     resetIdleTimer();
 
-    // Natural Language Intent Mapping (Local)
-    const lowerInput = cleanInput.toLowerCase();
-    
-    // Quick triggers for state
-    if (lowerInput.match(/\b(calmati|calma|shh|tranquillo|calm)\b/)) {
-      socketRef.current.emit('command', 'calm');
-      return;
-    }
-    if (lowerInput.match(/\b(attacca|distruggi|aggressivo|attack|kill)\b/)) {
-      socketRef.current.emit('command', 'attack');
-      return;
-    }
-    if (lowerInput.match(/\b(impazzisci|errore|bug|crash)\b/)) {
-      socketRef.current.emit('command', 'sad');
-      return;
-    }
-    if (lowerInput.match(/\b(attenzione|avviso|alert|occhio|vigile)\b/)) {
-      socketRef.current.emit('command', 'alert');
-      return;
-    }
-
-    // Stream control
-    if (lowerInput.includes('stream on') || lowerInput.includes('attiva stream')) {
-      socketRef.current.emit('command', 'stream on');
-      return;
-    }
-    if (lowerInput.includes('stream off') || lowerInput.includes('disattiva stream')) {
-      socketRef.current.emit('command', 'stream off');
-      return;
-    }
-    
-    // Memory wipe
-    if (cleanInput.trim() === '/reset') {
+    // Protocol: Memory wipe
+    if (cleanInput.toLowerCase() === '/reset') {
       setIsAiLoading(true);
       await clearAllMemories();
       setIsAiLoading(false);
       socketRef.current?.emit('command', 'calm');
-      alert("Memoria di sistema e tratti personalità cancellati con successo.");
+      alert("Tabula Rasa protocol: Success.");
       return;
     }
 
-    // Fallback to AI for complex commands
-    setIsAiLoading(true);
-    const aiResponse = await askDaemon(cleanInput);
-    setIsAiLoading(false);
-    processDaemonResponse(aiResponse);
+    // Pass everything else to the server/state engine first
+    socketRef.current.emit('command', cleanInput);
+
+    // AI Check: If it doesn't look like a direct command, trigger AI
+    if (!['calm', 'attack', 'glitch', 'alert', 'stream'].some(c => cleanInput.toLowerCase().startsWith(c))) {
+      setIsAiLoading(true);
+      const aiResponse = await askDaemon(cleanInput);
+      setIsAiLoading(false);
+      processDaemonResponse(aiResponse);
+    }
   };
 
   const handleFileUpload = async (fileOrEvent: File | React.ChangeEvent<HTMLInputElement>) => {
