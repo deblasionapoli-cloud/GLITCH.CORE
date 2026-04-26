@@ -3,11 +3,44 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getRecentMemories, saveMemory, getTraits } from "./memoryService";
 
 // DAEMON KERNEL CONFIGURATION
-const OPENROUTER_MODEL = "google/gemma-4-26b-a4b-it:free"; // Modello richiesto
-const OPENROUTER_FALLBACK_MODEL = "google/gemma-2-27b-it"; // Fallback di sicurezza
+const LOCAL_MODEL = 'llama3.2';
+const LOCAL_CHAT_URL = "http://localhost:11434/api/chat";
+const getEnv = (key: string) => {
+  // Check Vite environment
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
+    return (import.meta as any).env[key] || (import.meta as any).env[`VITE_${key}`];
+  }
+  // Check Node environment
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[key] || process.env[`VITE_${key}`];
+  }
+  return "";
+};
+
+const OPENROUTER_API_KEY = getEnv("OPENROUTER_API_KEY");
+const GEMINI_API_KEY = getEnv("GEMINI_API_KEY");
+const OPENROUTER_MODEL = "google/gemma-2-9b-it:free"; // Modello stabile e gratuito
+const OPENROUTER_FALLBACK_MODELS = [
+  "google/gemini-2.0-flash-exp:free",
+  "mistralai/mistral-7b-instruct:free",
+  "meta-llama/llama-3.1-8b-instruct:free",
+  "meta-llama/llama-3-8b-instruct:free",
+  "qwen/qwen-2-7b-instruct:free",
+  "google/gemma-2-9b-it:free"
+];
+
+const OPENROUTER_HEADERS = {
+  "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+  "Content-Type": "application/json",
+  "HTTP-Referer": "https://ais-dev.run.app",
+  "X-Title": "GLITCH_DAEMON",
+};
+
+const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
 
 const SYSTEM_PROMPT = `
@@ -39,7 +72,6 @@ export async function askDaemon(prompt: string, isInitiative: boolean = false, c
     ? `\nPATTERN RECENTI (Bit volatili):\n- ${context.context_memory.join("\n- ")}`
     : "";
 
-  // Aumentiamo il numero di memorie recenti per dare più contesto
   const memories = await getRecentMemories(15);
   const traits = await getTraits(15);
   
@@ -56,17 +88,78 @@ export async function askDaemon(prompt: string, isInitiative: boolean = false, c
 RICHIAMO MEMORIA: Ricorda chi è l'utente, cosa avete discusso e non comportarti come se fosse la prima volta. Usa le informazioni in 'PERSONALITÀ ACQUISITA' e 'DIALOGHI PRECEDENTI' per evolvere il rapporto. Se l'utente ti ha detto il suo nome o i suoi gusti, USALI.`;
   const finalPrompt = SYSTEM_PROMPT.replace("{{CONTEXT}}", contextString);
 
-  // 1. TENTATIVO CLOUD: OPENROUTER
-  if (process.env.OPENROUTER_API_KEY) {
+  // 1. TENTATIVO LOCALE: LLAMA 3.2 via OLLAMA
+  try {
+    const localResponse = await askLocalDaemon(prompt, isInitiative, finalPrompt);
+    if (localResponse && !localResponse.includes("OFFLINE")) return localResponse;
+  } catch (e) {
+    console.warn("Local Llama failed, trying cloud...", e);
+  }
+
+  // 2. TENTATIVO CLOUD: OPENROUTER
+  if (OPENROUTER_API_KEY && OPENROUTER_API_KEY !== "null") {
     try {
       const cloudResponse = await askOpenRouterDaemon(prompt, isInitiative, finalPrompt);
       if (cloudResponse) return cloudResponse;
     } catch (e) {
-      console.warn("OpenRouter API Failed", e);
+      console.warn("OpenRouter API Failed, falling back to Gemini", e);
     }
   }
 
-  return "[STATE: sad] ... NESSUNA RISPOSTA DAL CLOUD. SONO COMPLETAMENTE ISOLATO.";
+  // 3. TENTATIVO CLOUD: GEMINI (Built-in)
+  if (genAI) {
+    try {
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: finalPrompt });
+      const result = await model.generateContent(isInitiative ? "Agisci ora: proattività." : prompt);
+      const text = result.response.text();
+      if (text) {
+        if (!isInitiative) {
+          saveMemory(`U: ${prompt.substring(0, 40)} | D: ${text.substring(0, 40)}`, 'interaction');
+          if (prompt.length > 30) distillTrait(prompt, text);
+        }
+        return text;
+      }
+    } catch (e) {
+      console.warn("Gemini API Failed", e);
+    }
+  }
+
+  return "[STATE: sad] ... NESSUNA RISPOSTA DAL CLOUD (OpenRouter/Gemini) O LOCALE. SONO COMPLETAMENTE ISOLATO.";
+}
+
+async function askLocalDaemon(prompt: string, isInitiative: boolean, systemPrompt: string): Promise<string> {
+  try {
+    const contents = isInitiative ? "Agisci ora: esplora un concetto o cambia forma in base al tuo stato interno." : prompt;
+    const response = await fetch(LOCAL_CHAT_URL, {
+      method: "POST",
+      body: JSON.stringify({
+        model: LOCAL_MODEL,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: contents }
+        ],
+        stream: false,
+        options: {
+          temperature: 0.85,
+          num_predict: 500
+        }
+      })
+    });
+    
+    if (!response.ok) return "OFFLINE_RESPONSE";
+
+    const data = await response.json();
+    const text = data.message?.content || data.response || "IL MIO KERNEL È MUTO.";
+    
+    if (!isInitiative) {
+      saveMemory(`U: ${prompt.substring(0, 40)} | D: ${text.substring(0, 40)}`, 'interaction');
+      if (prompt.length > 30) distillTrait(prompt, text);
+    }
+    
+    return text;
+  } catch (e) {
+    return "OFFLINE. IL RASPBERRY È FREDDO.";
+  }
 }
 
 async function distillTrait(userMsg: string, daemonMsg: string) {
@@ -91,23 +184,38 @@ async function distillTrait(userMsg: string, daemonMsg: string) {
       Tratto filtrato:`;
 
     let traitText = "";
-    // Prova OpenRouter
-    if (process.env.OPENROUTER_API_KEY) {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: OPENROUTER_MODEL,
-          messages: [{ role: "user", content: extractionPrompt }],
-          temperature: 0.5
-        })
-      });
-      if (response.ok) {
-        const data = await response.json();
-        traitText = data.choices?.[0]?.message?.content || "";
+    // Prova OpenRouter con fallback
+    if (OPENROUTER_API_KEY && OPENROUTER_API_KEY !== "null") {
+      for (const modelName of OPENROUTER_FALLBACK_MODELS) {
+        try {
+          const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: OPENROUTER_HEADERS,
+            body: JSON.stringify({
+              model: modelName,
+              messages: [{ role: "user", content: extractionPrompt }],
+              temperature: 0.5
+            })
+          });
+          if (response.ok) {
+            const data = await response.json();
+            traitText = data.choices?.[0]?.message?.content || "";
+            if (traitText) break;
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+    }
+
+    // Fallback Gemini per distillazione
+    if (!traitText && genAI) {
+      try {
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const result = await model.generateContent(extractionPrompt);
+        traitText = result.response.text();
+      } catch (e) {
+        console.warn("Gemini distillation failed", e);
       }
     }
 
@@ -125,17 +233,12 @@ async function askOpenRouterDaemon(prompt: string, isInitiative: boolean, system
   try {
     const contents = isInitiative ? "Agisci ora: esplora un concetto o cambia forma in base al tuo stato interno." : prompt;
     
-    // Proviamo prima il modello richiesto
-    const fallbackFlow = [OPENROUTER_MODEL, OPENROUTER_FALLBACK_MODEL, 'google/gemma-2-9b-it:free'];
-
-    for (const modelName of fallbackFlow) {
+    // Proviamo i modelli della lista di fallback
+    for (const modelName of OPENROUTER_FALLBACK_MODELS) {
       try {
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
-          headers: {
-            "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-            "Content-Type": "application/json"
-          },
+          headers: OPENROUTER_HEADERS,
           body: JSON.stringify({
             model: modelName,
             messages: [

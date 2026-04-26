@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
+import 'dotenv/config';
 import { updateState } from './src/core/state_engine';
 import { INITIAL_STATE, State } from './src/core/types';
 import { startSshServer } from './src/services/ssh_service';
@@ -42,7 +43,7 @@ async function startServer() {
   setInterval(() => {
     globalState = updateState(globalState, []); // Just tick animation
     io.emit('state_update', globalState);
-  }, 83); // ~12 FPS (1000/12 = 83.33)
+  }, 333); // 3 FPS
 
   io.on('connection', (socket) => {
     console.log('User connected to GLITCH:', socket.id);

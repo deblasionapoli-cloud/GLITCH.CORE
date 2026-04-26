@@ -16,8 +16,9 @@ import { motion } from 'motion/react';
 import { imageToAscii } from './utils/imageUtils';
 
 export default function App() {
-  const [frame, setFrame] = useState('');
+  const [frame, setFrame] = useState(renderFrame(INITIAL_STATE));
   const [state, setState] = useState<State>(INITIAL_STATE);
+  const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -63,12 +64,28 @@ export default function App() {
   };
 
   useEffect(() => {
+    const handleGlobalError = (event: ErrorEvent) => {
+      console.error("Caught global error:", event.error);
+      setError(`CRITICAL_RUNTIME_ERR: ${event.message}`);
+    };
+    window.addEventListener('error', handleGlobalError);
+
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
     });
 
     const socket = io();
     socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log("Socket connected!");
+      setError(null);
+    });
+
+    socket.on('connect_error', (err) => {
+      console.error("Socket connection error:", err);
+      setError(`SOCKET_OFFLINE: ${err.message}`);
+    });
 
     socket.on('state_update', (newState: State) => {
       setState(newState);
@@ -78,11 +95,12 @@ export default function App() {
     resetIdleTimer();
 
     return () => {
+      window.removeEventListener('error', handleGlobalError);
       unsub();
       socket.disconnect();
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     };
-  }, []); // Remove isRemoteMode dependency to keep socket stable
+  }, []); 
 
   const processDaemonResponse = (response: string) => {
     // 1. Process Actions (State, Intensity)
@@ -351,6 +369,15 @@ export default function App() {
             <pre 
               className={`${themeClass} text-[min(2.0vh,1.5vw)] sm:text-[min(2.4vh,1.5vw)] md:text-[min(2.8vh,1.5vw)] leading-none tracking-tighter flex flex-col items-center justify-center select-none transition-all duration-200 overflow-hidden font-mono w-full h-full flex-1 relative`}
             >
+              {error && (
+                <div className="absolute inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4 border-2 border-red-500 text-red-500 font-bold text-center">
+                  <div className="text-xl mb-2 animate-pulse">[ SYSTEM_FAILURE ]</div>
+                  <div className="text-[10px] break-all max-w-md uppercase">{error}</div>
+                  <button onClick={() => window.location.reload()} className="mt-4 px-4 py-2 border border-red-500 hover:bg-red-500 hover:text-black transition-colors text-[10px]">
+                    ATTEMPT_REBOOT
+                  </button>
+                </div>
+              )}
               {(() => {
                 const lines = frame.split('\n');
                 
